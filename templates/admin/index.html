@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Admin — Research Agent{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Admin Dashboard</h1>
+  <p>System overview</p>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-value">{{ stats.total_users }}</div>
+    <div class="stat-label">Total Users</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ stats.active_users }}</div>
+    <div class="stat-label">Active Users</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ stats.article_count }}</div>
+    <div class="stat-label">Articles Saved</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ stats.job_stats.get('done', 0) }}</div>
+    <div class="stat-label">Jobs Completed</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ stats.job_stats.get('running', 0) }}</div>
+    <div class="stat-label">Jobs Running</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ stats.job_stats.get('error', 0) }}</div>
+    <div class="stat-label">Jobs Failed</div>
+  </div>
+</div>
+
+<div style="display:flex;gap:12px;margin-bottom:24px;">
+  <a href="{{ url_for('admin.users') }}" class="btn btn-primary">Manage Users</a>
+  <a href="{{ url_for('admin.jobs') }}" class="btn btn-secondary">View All Jobs</a>
+</div>
+
+<div class="card">
+  <div style="font-weight:600;font-size:0.95rem;margin-bottom:14px;">Recent Activity</div>
+  {% if stats.recent_jobs %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>User</th><th>Type</th><th>Topic</th><th>Status</th><th>Date</th></tr></thead>
+      <tbody>
+        {% for job in stats.recent_jobs %}
+        <tr>
+          <td>{{ job.email }}</td>
+          <td>{{ job.job_type }}</td>
+          <td>{{ job.topic[:50] }}{% if job.topic|length > 50 %}…{% endif %}</td>
+          <td><span class="badge badge-{{ job.status }}">{{ job.status }}</span></td>
+          <td>{{ job.created_at[:16] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p style="color:var(--text-muted);font-size:0.875rem;">No activity yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ article.title }} — Research Agent{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+  <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-sm">← Back</a>
+</div>
+
+<div class="article-content">
+  <div class="article-meta">
+    <span>{{ article.created_at[:10] }}</span>
+    <span>Topic: {{ article.topic }}</span>
+    {% if article.word_count %}<span>{{ article.word_count }} words</span>{% endif %}
+  </div>
+  {{ content | safe }}
+</div>
+{% endblock %}

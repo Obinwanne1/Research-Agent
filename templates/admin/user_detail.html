@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}{{ user.email }} — Admin{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+  <a href="{{ url_for('admin.users') }}" class="btn btn-secondary btn-sm">← Users</a>
+</div>
+
+<div class="page-header">
+  <h1>{{ user.display_name or user.email }}</h1>
+  <p>{{ user.email }} &bull; Joined {{ user.created_at[:10] }}</p>
+</div>
+
+<!-- User info card -->
+<div class="card" style="margin-bottom:20px;display:flex;gap:24px;flex-wrap:wrap;align-items:center;">
+  <div>
+    <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Role</div>
+    <strong>{{ user.role }}</strong>
+  </div>
+  <div>
+    <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Status</div>
+    <span class="badge {{ 'badge-done' if user.is_active else 'badge-error' }}">{{ 'Active' if user.is_active else 'Suspended' }}</span>
+  </div>
+  <div>
+    <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Articles</div>
+    <strong>{{ articles|length }}</strong>
+  </div>
+  <div>
+    <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Files on disk</div>
+    <strong>{{ file_count }}</strong>
+  </div>
+  <div>
+    <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Last login</div>
+    <strong>{{ user.last_login[:16] if user.last_login else 'Never' }}</strong>
+  </div>
+  <div style="margin-left:auto;display:flex;gap:8px;">
+    <form method="POST" action="{{ url_for('admin.toggle_user', user_id=user.id) }}">
+      <button class="btn btn-sm {{ 'btn-secondary' if user.is_active else 'btn-success' }}">
+        {{ 'Suspend' if user.is_active else 'Activate' }}
+      </button>
+    </form>
+    <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.id) }}" onsubmit="return confirm('Delete this user and all their data? This cannot be undone.');">
+      <button class="btn btn-sm btn-danger">Delete</button>
+    </form>
+  </div>
+</div>
+
+<!-- Articles -->
+<div style="font-weight:600;margin-bottom:10px;">Articles ({{ articles|length }})</div>
+{% if articles %}
+<div class="card" style="margin-bottom:20px;">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Title</th><th>Topic</th><th>Words</th><th>Date</th></tr></thead>
+      <tbody>
+        {% for art in articles %}
+        <tr>
+          <td>{{ art.title }}</td>
+          <td>{{ art.topic or '—' }}</td>
+          <td>{{ art.word_count or '—' }}</td>
+          <td>{{ art.created_at[:10] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<p style="color:var(--text-muted);font-size:0.875rem;margin-bottom:20px;">No articles.</p>
+{% endif %}
+
+<!-- Jobs -->
+<div style="font-weight:600;margin-bottom:10px;">Recent Jobs ({{ jobs|length }})</div>
+{% if jobs %}
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Type</th><th>Topic</th><th>Status</th><th>Message</th><th>Date</th></tr></thead>
+      <tbody>
+        {% for job in jobs %}
+        <tr>
+          <td>{{ job.job_type }}</td>
+          <td>{{ job.topic[:50] }}{% if job.topic|length > 50 %}…{% endif %}</td>
+          <td><span class="badge badge-{{ job.status }}">{{ job.status }}</span></td>
+          <td style="color:var(--text-muted);font-size:0.8rem;">{{ job.message or '—' }}</td>
+          <td>{{ job.created_at[:16] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<p style="color:var(--text-muted);font-size:0.875rem;">No jobs.</p>
+{% endif %}
+{% endblock %}

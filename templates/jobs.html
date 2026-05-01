@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Job Results — Research Agent{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+  <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-sm">← Back</a>
+</div>
+
+<div class="page-header">
+  <h1>Job Results</h1>
+  <p>Query: <strong>{{ job.topic }}</strong> &mdash; {{ jobs|length }} results</p>
+</div>
+
+{% if jobs %}
+<div class="card-grid">
+  {% for j in jobs %}
+  <div class="card job-card">
+    <h3>{{ j.title }}</h3>
+    <div class="job-company">{{ j.company }}</div>
+    <div class="job-meta">
+      {{ j.location }}
+      {% if j.salary %} &bull; {{ j.salary }}{% endif %}
+      {% if j.date %} &bull; {{ j.date }}{% endif %}
+    </div>
+    {% if j.tags %}
+    <div class="job-tags">
+      {% for tag in j.tags %}<span class="job-tag">{{ tag }}</span>{% endfor %}
+    </div>
+    {% endif %}
+    <div style="margin-top:10px;">
+      <a href="{{ j.url }}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">Apply</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">💼</div>
+  <h3>No jobs found</h3>
+  <p>Try a different search query.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Research Agent{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+</head>
+<body>
+<div class="layout">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <h2>Research Agent</h2>
+      <p>AI-powered research</p>
+    </div>
+    <div class="sidebar-nav">
+      <span class="sidebar-section-label">Research</span>
+      <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' else '' }}">
+        <span class="nav-icon">⊞</span> Dashboard
+      </a>
+
+      <span class="sidebar-section-label">Account</span>
+      {% if session.get('role') == 'admin' %}
+      <a href="{{ url_for('admin.index') }}" class="{{ 'active' if request.blueprint == 'admin' else '' }}">
+        <span class="nav-icon">⚙</span> Admin
+      </a>
+      {% endif %}
+      <a href="{{ url_for('logout') }}">
+        <span class="nav-icon">⇥</span> Logout
+      </a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-email">{{ session.get('email', '') }}</div>
+      <button id="theme-toggle" class="theme-toggle">☾ Dark</button>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <main class="main">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flash-list">
+          {% for category, message in messages %}
+            <li class="flash-item flash-{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+<!-- Spinner overlay -->
+<div id="spinner-overlay" class="spinner-overlay">
+  <div class="spinner-box">
+    <div class="spinner"></div>
+    <div style="font-weight:600;font-size:0.95rem;">Researching...</div>
+    <div id="spinner-msg" class="spinner-msg">Starting...</div>
+  </div>
+</div>
+</body>
+</html>

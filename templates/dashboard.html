@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Research Agent{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Dashboard</h1>
+  <p>Welcome back, {{ session.get('display_name') }}</p>
+</div>
+
+<!-- Research input -->
+<div class="research-box card" style="margin-bottom:16px;">
+  <h2>Research a Topic</h2>
+  <form id="research-form">
+    <div class="input-row">
+      <input type="text" id="research-input" class="form-control" placeholder="e.g. quantum computing breakthroughs 2025" autocomplete="off">
+      <button type="submit" class="btn btn-primary">Research</button>
+    </div>
+  </form>
+</div>
+
+<!-- Job search input -->
+<div class="research-box card" style="margin-bottom:28px;">
+  <h2>Find Remote Jobs</h2>
+  <form id="job-form">
+    <div class="input-row">
+      <input type="text" id="job-input" class="form-control" placeholder="e.g. Python developer, UX designer" autocomplete="off">
+      <button type="submit" class="btn btn-secondary">Find Jobs</button>
+    </div>
+  </form>
+</div>
+
+<!-- Article cards -->
+<div class="page-header">
+  <h2 style="font-size:1rem;font-weight:600;">Your Research ({{ articles|length }})</h2>
+</div>
+
+{% if articles %}
+<div class="card-grid">
+  {% for art in articles %}
+  <div class="card article-card">
+    <div class="card-topic">{{ art.topic or 'Research' }}</div>
+    <h3>{{ art.title }}</h3>
+    <div class="card-meta">
+      <span>{{ art.created_at[:10] }}</span>
+      {% if art.word_count %}<span>{{ art.word_count }} words</span>{% endif %}
+    </div>
+    <a href="{{ url_for('article', slug=art.slug) }}" class="btn btn-primary btn-sm btn-read">Read Article</a>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">📄</div>
+  <h3>No articles yet</h3>
+  <p>Enter a topic above to research your first article.</p>
+</div>
+{% endif %}
+
+<!-- Recent jobs (non-research) -->
+{% set job_search_jobs = jobs | selectattr('job_type', 'eq', 'job_search') | selectattr('status', 'eq', 'done') | list %}
+{% if job_search_jobs %}
+<div style="margin-top:32px;">
+  <div class="page-header"><h2 style="font-size:1rem;font-weight:600;">Recent Job Searches</h2></div>
+  <div class="table-wrap card">
+    <table>
+      <thead><tr><th>Query</th><th>Status</th><th>Date</th><th></th></tr></thead>
+      <tbody>
+        {% for job in job_search_jobs[:5] %}
+        <tr>
+          <td>{{ job.topic }}</td>
+          <td><span class="badge badge-{{ job.status }}">{{ job.status }}</span></td>
+          <td>{{ job.created_at[:10] }}</td>
+          <td><a href="{{ url_for('job_results', job_id=job.id) }}" class="btn btn-sm btn-secondary">View</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

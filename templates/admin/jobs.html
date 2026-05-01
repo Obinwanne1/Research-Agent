@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Jobs Monitor — Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Jobs Monitor</h1>
+  <p>All background jobs across all users</p>
+</div>
+
+<!-- Filters -->
+<form method="GET" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+  <select name="status" class="form-control" style="width:auto;">
+    <option value="">All Statuses</option>
+    {% for s in ['pending','running','done','error'] %}
+    <option value="{{ s }}" {{ 'selected' if status_filter == s else '' }}>{{ s }}</option>
+    {% endfor %}
+  </select>
+  <select name="type" class="form-control" style="width:auto;">
+    <option value="">All Types</option>
+    {% for t in ['research','job_search'] %}
+    <option value="{{ t }}" {{ 'selected' if type_filter == t else '' }}>{{ t }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-primary">Filter</button>
+  <a href="{{ url_for('admin.jobs') }}" class="btn btn-secondary">Clear</a>
+</form>
+
+<div class="card">
+  {% if jobs %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>ID</th><th>User</th><th>Type</th><th>Topic</th><th>Status</th><th>Message</th><th>Created</th><th>Completed</th></tr>
+      </thead>
+      <tbody>
+        {% for job in jobs %}
+        <tr>
+          <td style="color:var(--text-muted);">#{{ job.id }}</td>
+          <td>{{ job.email }}</td>
+          <td>{{ job.job_type }}</td>
+          <td>{{ job.topic[:40] }}{% if job.topic|length > 40 %}…{% endif %}</td>
+          <td><span class="badge badge-{{ job.status }}">{{ job.status }}</span></td>
+          <td style="color:var(--text-muted);font-size:0.8rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ job.message or '—' }}</td>
+          <td>{{ job.created_at[:16] }}</td>
+          <td>{{ job.completed_at[:16] if job.completed_at else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">📋</div>
+    <h3>No jobs found</h3>
+    <p>No jobs match the current filters.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

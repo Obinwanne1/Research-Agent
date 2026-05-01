@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Research Agent</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+</head>
+<body>
+<div class="auth-page">
+  <div style="text-align:center;max-width:480px;padding:24px;">
+    <h1 style="font-size:2rem;font-weight:800;margin-bottom:10px;">Research Agent</h1>
+    <p style="color:var(--text-muted);margin-bottom:32px;font-size:1rem;">
+      AI-powered research. Search any topic, get a structured summary saved as an article.
+    </p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <a href="{{ url_for('login') }}" class="btn btn-primary" style="padding:12px 28px;font-size:1rem;">Sign In</a>
+      <a href="{{ url_for('register') }}" class="btn btn-secondary" style="padding:12px 28px;font-size:1rem;">Create Account</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>
