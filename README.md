@@ -130,7 +130,7 @@ You'll see the home page. Click **Register** to create your first account.
 1. On the Dashboard, find the job search box
 2. Type a role and location (e.g. `Python developer remote`)
 3. Click **Search Jobs**
-4. Results appear as a table with apply links
+4. Results appear as styled cards with tags and Apply buttons — same layout as research results
 
 ---
 
@@ -148,7 +148,7 @@ ResearchAgent/
 ├── config.py           ← App settings (port, secret key, file paths)
 ├── models.py           ← Database layer (SQLite — users, jobs, articles)
 ├── research_agent.py   ← The core research pipeline (see below)
-├── job_scraper.py      ← Fetches jobs from the RemoteOK API
+├── job_scraper.py      ← Fetches jobs via DuckDuckGo + Claude extraction
 │
 ├── static/
 │   ├── css/main.css    ← All styles (green/white brand, dark mode)
@@ -182,9 +182,12 @@ Step 2: FETCH
 Step 3: SUMMARIZE
   → Builds a prompt combining your topic + the fetched page content
   → Sends it to Claude via the CLI command: claude -p
-  → Claude writes a 600–1000 word summary with Overview, Key Findings, Sources
+  → Claude writes a 600–1000 word summary with Overview and Key Findings
 
 Step 4: SAVE
+  → Appends a verified Sources section built from the actual HTTP 200 pages fetched
+     (no Claude-hallucinated URLs — only links that were confirmed reachable)
+  → Sources render as clickable links that open in a new tab
   → Saves the summary as a .md file: research/<user_id>/YYYY-MM-DD_topic.md
   → Stores the article record in SQLite database
   → Frontend gets notified via polling → spinner disappears → article appears
