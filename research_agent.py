@@ -121,12 +121,22 @@ Write a detailed research summary in plain English (600–1000 words).
 Structure:
 ## Overview
 ## Key Findings
-## Sources
 
-Include source URLs at the bottom under Sources.
+Do NOT include a Sources section — it will be added automatically.
 Output ONLY the markdown content — no preamble."""
 
         summary = call_claude(prompt)
+
+        # Strip any Sources section Claude may have added anyway
+        summary = re.sub(r'\n## Sources.*', '', summary, flags=re.DOTALL).strip()
+
+        # Build verified sources from pages we actually fetched (all returned HTTP 200)
+        # Use raw HTML so links are clickable with target="_blank" and title chars can't break markdown
+        source_items = "\n".join(
+            f'<li><a href="{p["url"]}" target="_blank" rel="noopener noreferrer">{p["title"] or p["url"]}</a></li>'
+            for p in pages
+        )
+        sources_md = f"\n\n## Sources\n<ul>\n{source_items}\n</ul>"
 
         # Step 4: Save to file
         models.update_job(job_id, message="Saving article...")
@@ -138,6 +148,7 @@ Output ONLY the markdown content — no preamble."""
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(f"# {topic}\n\n")
             f.write(summary)
+            f.write(sources_md)
 
         word_count = len(summary.split())
         title = topic.title()

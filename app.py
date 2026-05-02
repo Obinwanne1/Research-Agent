@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import markdown as md
 from flask import (
@@ -104,6 +105,12 @@ def article(slug):
     with open(file_path, "r", encoding="utf-8") as f:
         raw = f.read()
     html_content = md.markdown(raw, extensions=["fenced_code", "tables"])
+    # Convert bare URLs in text nodes to clickable links (covers old articles where Claude wrote plain URLs)
+    html_content = re.sub(
+        r'((?:^|(?<=[\s(>]))(https?://[^\s<>"\')\]]+))',
+        r'<a href="\2" target="_blank" rel="noopener noreferrer">\2</a>',
+        html_content
+    )
     return render_template("article.html", article=art, content=html_content)
 
 

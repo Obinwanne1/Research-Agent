@@ -6,12 +6,14 @@
   <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-sm">← Back</a>
 </div>
 
-<div class="article-content">
-  <div class="article-meta">
-    <span>{{ article.created_at[:10] }}</span>
-    <span>Topic: {{ article.topic }}</span>
-    {% if article.word_count %}<span>{{ article.word_count }} words</span>{% endif %}
+<div class="page-header">
+  <h1>Research Results</h1>
+  <p>{{ article.created_at[:10] }} &nbsp;&bull;&nbsp; Topic: <strong>{{ article.topic }}</strong>{% if article.word_count %} &mdash; {{ article.word_count }} words{% endif %}</p>
+</div>
+
+<div class="card">
+  <div class="article-content">
+    {{ content | safe }}
   </div>
-  {{ content | safe }}
 </div>
 {% endblock %}
