@@ -67,6 +67,24 @@ def delete_user(user_id):
     return redirect(url_for("admin.users"))
 
 
+@admin_bp.route("/jobs/<int:job_id>/delete", methods=["POST"])
+@admin_required
+def delete_job(job_id):
+    models.delete_job(job_id)
+    flash("Error job deleted.", "success")
+    status_filter = request.args.get("status", "")
+    type_filter = request.args.get("type", "")
+    return redirect(url_for("admin.jobs", status=status_filter, type=type_filter))
+
+
+@admin_bp.route("/jobs/delete-errors", methods=["POST"])
+@admin_required
+def delete_all_errors():
+    models.delete_jobs_by_status("error")
+    flash("All error jobs deleted.", "success")
+    return redirect(url_for("admin.jobs"))
+
+
 @admin_bp.route("/jobs")
 @admin_required
 def jobs():

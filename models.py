@@ -226,6 +226,22 @@ def get_all_jobs(status_filter=None, type_filter=None, limit=100):
     return [dict(r) for r in rows]
 
 
+def delete_job(job_id):
+    with _db_lock:
+        conn = get_conn()
+        conn.execute("DELETE FROM research_jobs WHERE id = ? AND status != 'done'", (job_id,))
+        conn.commit()
+        conn.close()
+
+
+def delete_jobs_by_status(status):
+    with _db_lock:
+        conn = get_conn()
+        conn.execute("DELETE FROM research_jobs WHERE status = ?", (status,))
+        conn.commit()
+        conn.close()
+
+
 def get_jobs_for_user(user_id, limit=50):
     conn = get_conn()
     rows = conn.execute(
