@@ -175,6 +175,28 @@ def api_status(job_id):
     })
 
 
+@app.route("/api/generate/prompt", methods=["POST"])
+@login_required
+def api_generate_prompt():
+    data = request.get_json(silent=True) or {}
+    description = (data.get("description") or "").strip()
+    if not description:
+        return jsonify({"error": "description is required"}), 400
+    job_id = background.enqueue("prompt_gen", {"topic": description}, session["user_id"])
+    return jsonify({"job_id": job_id})
+
+
+@app.route("/api/generate/skill", methods=["POST"])
+@login_required
+def api_generate_skill():
+    data = request.get_json(silent=True) or {}
+    description = (data.get("description") or "").strip()
+    if not description:
+        return jsonify({"error": "description is required"}), 400
+    job_id = background.enqueue("skill_gen", {"topic": description}, session["user_id"])
+    return jsonify({"job_id": job_id})
+
+
 @app.route("/api/articles")
 @login_required
 def api_articles():

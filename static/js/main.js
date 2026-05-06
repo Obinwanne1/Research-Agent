@@ -44,7 +44,58 @@ document.addEventListener('DOMContentLoaded', function () {
       await startJob('job_search', { query }, 'job_search');
     });
   }
+
+  // ── Generator form ───────────────────────────────────────────────────────
+  const generatorForm = document.getElementById('generator-form');
+  if (generatorForm) {
+    generatorForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const description = document.getElementById('generator-input').value.trim();
+      const type = document.getElementById('generator-type').value;
+      if (!description) return;
+      await startGeneratorJob(type, description);
+    });
+  }
 });
+
+// ── Generator job ──────────────────────────────────────────────────────────
+async function startGeneratorJob(type, description) {
+  const endpoint = type === 'prompt' ? '/api/generate/prompt' : '/api/generate/skill';
+  showSpinner('Generating ' + type + '...');
+
+  let jobId;
+  try {
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description })
+    });
+    const data = await resp.json();
+    if (data.error) { hideSpinner(); showToast(data.error, 'error'); return; }
+    jobId = data.job_id;
+  } catch (err) {
+    hideSpinner();
+    showToast('Network error. Try again.', 'error');
+    return;
+  }
+
+  const poll = setInterval(async function () {
+    try {
+      const resp = await fetch(`/api/status/${jobId}`);
+      const data = await resp.json();
+      updateSpinnerMsg(data.message || '...');
+      if (data.status === 'done') {
+        clearInterval(poll);
+        hideSpinner();
+        window.location.href = `/article/${data.slug}`;
+      } else if (data.status === 'error') {
+        clearInterval(poll);
+        hideSpinner();
+        showToast(data.message || 'Generation failed.', 'error');
+      }
+    } catch (err) { /* keep polling */ }
+  }, 1500);
+}
 
 // ── Job polling ────────────────────────────────────────────────────────────
 async function startJob(type, payload, jobType) {

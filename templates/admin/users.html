@@ -77,6 +77,10 @@
                 {{ 'Make Admin' if u.role == 'user' else 'Remove Admin' }}
               </button>
             </form>
+            <form method="POST" action="{{ url_for('admin.delete_user', user_id=u.id) }}" style="display:inline;"
+                  onsubmit="return confirm('Permanently delete {{ u.email }} and all their data?');">
+              <button type="submit" class="btn btn-sm" style="background:#b91c1c;color:#fff;">Delete</button>
+            </form>
             {% endif %}
             {% endif %}
           </td>

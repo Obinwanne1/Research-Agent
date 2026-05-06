@@ -5,10 +5,12 @@ import models
 def _get_handlers():
     from research_agent import run_research_task
     from job_scraper import run_job_search_task
+    from prompt_generator import run_prompt_gen_task, run_skill_gen_task
     return {
         "research":   run_research_task,
         "job_search": run_job_search_task,
-        # Add new task types here — one function, one dict entry
+        "prompt_gen": run_prompt_gen_task,
+        "skill_gen":  run_skill_gen_task,
     }
 
 

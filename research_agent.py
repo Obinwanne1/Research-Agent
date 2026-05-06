@@ -98,9 +98,14 @@ def run_research_task(payload, user_id, job_id):
             models.update_job(job_id, status="error", message="No search results found.")
             return
 
+        # Detect if topic requests a specific number of items (e.g. "20 top AI", "top 10 tools")
+        quantity_match = re.search(r'\b(\d+)\b', topic)
+        requested_count = int(quantity_match.group(1)) if quantity_match else None
+        max_pages = 5 if requested_count and requested_count >= 10 else 3
+
         # Step 2: Fetch pages
         models.update_job(job_id, message="Fetching pages...")
-        pages = fetch_pages(results, max_pages=2)
+        pages = fetch_pages(results, max_pages=max_pages)
         if not pages:
             models.update_job(job_id, status="error", message="Could not fetch any pages.")
             return
@@ -111,16 +116,30 @@ def run_research_task(payload, user_id, job_id):
             f"SOURCE: {p['url']}\nTITLE: {p['title']}\nCONTENT:\n{p['content']}"
             for p in pages
         )
+
+        if requested_count:
+            count_instruction = (
+                f"\nIMPORTANT: The topic explicitly requests {requested_count} items. "
+                f"You MUST list ALL {requested_count} of them — no more, no less. "
+                f"Number each item using ### and its number (e.g. ### 1. Item Name). "
+                f"Do not summarize or group items together to reach a shorter count."
+            )
+            word_guide = f"{requested_count * 80}–{requested_count * 120}"
+        else:
+            count_instruction = ""
+            word_guide = "600–1000"
+
         prompt = f"""Research topic: {topic}
 
 Here is content fetched from the web:
 
 {sources_text}
 
-Write a detailed research summary in plain English (600–1000 words).
+Write a detailed research summary in plain English ({word_guide} words).{count_instruction}
 Structure:
 ## Overview
 ## Key Findings
+(use ### for each individual item heading)
 
 Do NOT include a Sources section — it will be added automatically.
 Output ONLY the markdown content — no preamble."""

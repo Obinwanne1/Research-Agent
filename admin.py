@@ -68,7 +68,7 @@ def toggle_user(user_id):
 
 
 @admin_bp.route("/users/<int:user_id>/delete", methods=["POST"])
-@admin_required
+@superadmin_required
 def delete_user(user_id):
     user = models.get_user_by_id(user_id)
     if user:
