@@ -30,7 +30,22 @@ def admin_required(f):
     def decorated(*args, **kwargs):
         if "user_id" not in session:
             return redirect(url_for("login"))
-        if session.get("role") != "admin":
+        if session.get("role") not in ("admin", "superadmin"):
+            abort(403)
+        user = models.get_user_by_id(session["user_id"])
+        if not user or not user["is_active"]:
+            session.clear()
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated
+
+
+def superadmin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        if session.get("role") != "superadmin":
             abort(403)
         user = models.get_user_by_id(session["user_id"])
         if not user or not user["is_active"]:

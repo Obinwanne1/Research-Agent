@@ -2,7 +2,7 @@ import os
 import shutil
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 import models
-from auth import admin_required
+from auth import admin_required, superadmin_required
 from config import Config
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -18,8 +18,22 @@ def index():
 @admin_bp.route("/users")
 @admin_required
 def users():
-    all_users = models.get_all_users()
-    return render_template("admin/users.html", users=all_users)
+    email_filter = request.args.get("email", "").strip()
+    all_users = models.get_all_users(email_filter=email_filter or None)
+    return render_template("admin/users.html", users=all_users, email_filter=email_filter)
+
+
+@admin_bp.route("/users/<int:user_id>/set-role", methods=["POST"])
+@superadmin_required
+def set_user_role(user_id):
+    target = models.get_user_by_id(user_id)
+    if not target or target["role"] == "superadmin":
+        flash("Cannot modify this user.", "error")
+        return redirect(url_for("admin.users"))
+    new_role = "admin" if target["role"] == "user" else "user"
+    models.set_user_role(user_id, new_role)
+    flash(f"{target['email']} role set to {new_role}.", "success")
+    return redirect(url_for("admin.users", email=request.args.get("email", "")))
 
 
 @admin_bp.route("/users/<int:user_id>")
@@ -68,17 +82,17 @@ def delete_user(user_id):
 
 
 @admin_bp.route("/jobs/<int:job_id>/delete", methods=["POST"])
-@admin_required
+@superadmin_required
 def delete_job(job_id):
     models.delete_job(job_id)
-    flash("Error job deleted.", "success")
+    flash("Job deleted.", "success")
     status_filter = request.args.get("status", "")
     type_filter = request.args.get("type", "")
     return redirect(url_for("admin.jobs", status=status_filter, type=type_filter))
 
 
 @admin_bp.route("/jobs/delete-errors", methods=["POST"])
-@admin_required
+@superadmin_required
 def delete_all_errors():
     models.delete_jobs_by_status("error")
     flash("All error jobs deleted.", "success")
@@ -90,13 +104,16 @@ def delete_all_errors():
 def jobs():
     status_filter = request.args.get("status", "")
     type_filter = request.args.get("type", "")
+    user_filter = request.args.get("user", "").strip()
     all_jobs = models.get_all_jobs(
         status_filter=status_filter or None,
-        type_filter=type_filter or None
+        type_filter=type_filter or None,
+        user_filter=user_filter or None,
     )
     return render_template(
         "admin/jobs.html",
         jobs=all_jobs,
         status_filter=status_filter,
-        type_filter=type_filter
+        type_filter=type_filter,
+        user_filter=user_filter,
     )

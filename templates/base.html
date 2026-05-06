@@ -22,7 +22,7 @@
       </a>
 
       <span class="sidebar-section-label">Account</span>
-      {% if session.get('role') == 'admin' %}
+      {% if session.get('role') in ('admin', 'superadmin') %}
       <a href="{{ url_for('admin.index') }}" class="{{ 'active' if request.blueprint == 'admin' else '' }}">
         <span class="nav-icon">⚙</span> Admin
       </a>

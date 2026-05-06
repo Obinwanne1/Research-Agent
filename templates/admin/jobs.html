@@ -21,11 +21,15 @@
     <option value="{{ t }}" {{ 'selected' if type_filter == t else '' }}>{{ t }}</option>
     {% endfor %}
   </select>
+  <input type="text" name="user" value="{{ user_filter }}" placeholder="Filter by user email…"
+         class="form-control" style="width:220px;">
   <button type="submit" class="btn btn-primary">Filter</button>
   <a href="{{ url_for('admin.jobs') }}" class="btn btn-secondary">Clear</a>
+  {% if session.get('role') == 'superadmin' %}
   <form method="POST" action="{{ url_for('admin.delete_all_errors') }}" style="display:inline;" onsubmit="return confirm('Delete ALL error jobs?');">
     <button type="submit" class="btn" style="background:#b91c1c;color:#fff;">Delete All Errors</button>
   </form>
+  {% endif %}
 </form>
 
 <div class="card">
@@ -47,7 +51,7 @@
           <td>{{ job.created_at[:16] }}</td>
           <td>{{ job.completed_at[:16] if job.completed_at else '—' }}</td>
           <td>
-            {% if job.status != 'done' %}
+            {% if job.status != 'done' and session.get('role') == 'superadmin' %}
             <form method="POST" action="{{ url_for('admin.delete_job', job_id=job.id) }}" onsubmit="return confirm('Delete job #{{ job.id }}?');">
               <button type="submit" class="btn" style="background:#b91c1c;color:#fff;padding:2px 8px;font-size:0.75rem;">Delete</button>
             </form>

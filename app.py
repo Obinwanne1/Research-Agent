@@ -67,8 +67,8 @@ def register():
         elif models.get_user_by_email(email):
             error = "An account with that email already exists."
         else:
-            # First registered user becomes admin
-            role = "admin" if models.count_users() == 0 else "user"
+            # First registered user becomes superadmin
+            role = "superadmin" if models.count_users() == 0 else "user"
             user = models.create_user(email, hash_password(password), display_name or None, role)
             set_session(user)
             models.update_last_login(user["id"])

@@ -4,8 +4,20 @@
 {% block content %}
 <div class="page-header">
   <h1>Users</h1>
-  <p>{{ users|length }} total accounts</p>
+  <p>{{ users|length }} account{{ 's' if users|length != 1 else '' }} found</p>
 </div>
+
+<!-- Email filter (superadmin only) -->
+{% if session.get('role') == 'superadmin' %}
+<form method="GET" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+  <input type="text" name="email" value="{{ email_filter }}" placeholder="Filter by email…"
+         class="form-control" style="width:280px;">
+  <button type="submit" class="btn btn-primary">Search</button>
+  {% if email_filter %}
+  <a href="{{ url_for('admin.users') }}" class="btn btn-secondary">Clear</a>
+  {% endif %}
+</form>
+{% endif %}
 
 <div class="card">
   <div class="table-wrap">
@@ -29,7 +41,9 @@
           <td>{{ u.email }}</td>
           <td>{{ u.display_name or '—' }}</td>
           <td>
-            {% if u.role == 'admin' %}
+            {% if u.role == 'superadmin' %}
+              <span class="badge" style="background:#7c3aed;color:#fff;">superadmin</span>
+            {% elif u.role == 'admin' %}
               <span class="badge badge-running">admin</span>
             {% else %}
               <span style="color:var(--text-muted);font-size:0.8rem;">user</span>
@@ -48,12 +62,23 @@
           <td>{{ u.created_at[:10] }}</td>
           <td style="display:flex;gap:6px;flex-wrap:wrap;">
             <a href="{{ url_for('admin.user_detail', user_id=u.id) }}" class="btn btn-sm btn-secondary">View</a>
+            {% if u.role != 'superadmin' %}
             <form method="POST" action="{{ url_for('admin.toggle_user', user_id=u.id) }}" style="display:inline;">
-              <button type="submit" class="btn btn-sm {{ 'btn-warning' if u.is_active else 'btn-success' }}"
+              <button type="submit" class="btn btn-sm"
                 style="background:{{ '#f59e0b' if u.is_active else '#10b981' }};color:#fff;">
                 {{ 'Suspend' if u.is_active else 'Activate' }}
               </button>
             </form>
+            {% if session.get('role') == 'superadmin' %}
+            <form method="POST" action="{{ url_for('admin.set_user_role', user_id=u.id, email=email_filter) }}" style="display:inline;"
+                  onsubmit="return confirm('Change {{ u.email }} role to {{ 'user' if u.role == 'admin' else 'admin' }}?');">
+              <button type="submit" class="btn btn-sm"
+                style="background:{{ '#6B7B3A' if u.role == 'user' else '#374151' }};color:#fff;">
+                {{ 'Make Admin' if u.role == 'user' else 'Remove Admin' }}
+              </button>
+            </form>
+            {% endif %}
+            {% endif %}
           </td>
         </tr>
         {% endfor %}

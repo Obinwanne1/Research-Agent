@@ -59,6 +59,18 @@ def init_db():
             );
         """)
         conn.commit()
+
+        # Migrate: promote oldest admin to superadmin if no superadmin exists
+        has_superadmin = conn.execute(
+            "SELECT COUNT(*) FROM users WHERE role = 'superadmin'"
+        ).fetchone()[0]
+        if not has_superadmin:
+            conn.execute("""
+                UPDATE users SET role = 'superadmin'
+                WHERE id = (SELECT id FROM users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1)
+            """)
+            conn.commit()
+
         conn.close()
 
 
@@ -108,6 +120,14 @@ def update_last_login(user_id):
         conn.close()
 
 
+def set_user_role(user_id, role):
+    with _db_lock:
+        conn = get_conn()
+        conn.execute("UPDATE users SET role = ? WHERE id = ?", (role, user_id))
+        conn.commit()
+        conn.close()
+
+
 def toggle_user_active(user_id):
     with _db_lock:
         conn = get_conn()
@@ -119,9 +139,11 @@ def toggle_user_active(user_id):
         conn.close()
 
 
-def get_all_users():
+def get_all_users(email_filter=None):
     conn = get_conn()
-    rows = conn.execute("""
+    where = "WHERE u.email LIKE ?" if email_filter else ""
+    params = [f"%{email_filter}%"] if email_filter else []
+    rows = conn.execute(f"""
         SELECT u.id, u.email, u.display_name, u.role, u.is_active,
                u.last_login, u.created_at,
                COUNT(DISTINCT a.id) as article_count,
@@ -129,9 +151,10 @@ def get_all_users():
         FROM users u
         LEFT JOIN articles a ON a.user_id = u.id
         LEFT JOIN research_jobs rj ON rj.user_id = u.id
+        {where}
         GROUP BY u.id
         ORDER BY u.created_at DESC
-    """).fetchall()
+    """, params).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
@@ -203,7 +226,7 @@ def get_job(job_id, user_id=None):
     return dict(row) if row else None
 
 
-def get_all_jobs(status_filter=None, type_filter=None, limit=100):
+def get_all_jobs(status_filter=None, type_filter=None, user_filter=None, limit=100):
     conn = get_conn()
     conditions = []
     params = []
@@ -213,6 +236,9 @@ def get_all_jobs(status_filter=None, type_filter=None, limit=100):
     if type_filter:
         conditions.append("rj.job_type = ?")
         params.append(type_filter)
+    if user_filter:
+        conditions.append("u.email LIKE ?")
+        params.append(f"%{user_filter}%")
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     rows = conn.execute(f"""
         SELECT rj.*, u.email
