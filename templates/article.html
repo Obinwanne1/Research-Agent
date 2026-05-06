@@ -8,7 +8,7 @@
 
 <div class="page-header">
   <h1>Research Results</h1>
-  <p>{{ article.created_at[:10] }} &nbsp;&bull;&nbsp; Topic: <strong>{{ article.topic }}</strong>{% if article.word_count %} &mdash; {{ article.word_count }} words{% endif %}</p>
+  <p>{{ article.created_at[:10] }} &nbsp;&bull;&nbsp; Topic: <strong>{{ article.topic[:80] ~ ('…' if article.topic and article.topic|length > 80 else '') }}</strong>{% if article.word_count %} &mdash; {{ article.word_count }} words{% endif %}</p>
 </div>
 
 <div class="card">

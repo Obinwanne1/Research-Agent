@@ -112,14 +112,40 @@ a:hover { text-decoration: underline; }
   border-radius: var(--radius); padding: 20px;
   box-shadow: var(--shadow);
 }
-.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
 
-.article-card { display: flex; flex-direction: column; transition: box-shadow 0.15s, transform 0.1s; }
-.article-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
-.article-card .card-topic { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.6px; color: var(--accent); font-weight: 600; margin-bottom: 6px; }
-.article-card h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; line-height: 1.4; }
-.article-card .card-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: auto; padding-top: 12px; display: flex; gap: 12px; }
-.article-card .btn-read { margin-top: 12px; }
+.article-card {
+  display: flex; flex-direction: column;
+  transition: box-shadow 0.2s, transform 0.15s;
+  border-top: 3px solid var(--accent);
+  padding: 20px;
+  min-height: 200px;
+}
+.article-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+.article-card .card-topic {
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.7px;
+  color: var(--accent); font-weight: 700; margin-bottom: 10px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.article-card h3 {
+  font-size: 1rem; font-weight: 700; line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden; margin-bottom: 0;
+  color: var(--text);
+}
+
+.article-card .card-meta {
+  font-size: 0.73rem; color: var(--text-muted);
+  margin-top: auto; padding-top: 16px;
+  display: flex; gap: 8px; align-items: center;
+}
+.article-card .card-meta span { display: flex; align-items: center; gap: 3px; }
+.article-card .card-meta .meta-sep { opacity: 0.3; }
+
+.article-card .btn-read { margin-top: 12px; width: 100%; justify-content: center; font-size: 0.82rem; padding: 7px 14px; }
 
 /* ── Stats row ── */
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
