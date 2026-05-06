@@ -2,22 +2,125 @@
 {% block title %}{{ article.title }} — Research Agent{% endblock %}
 
 {% block content %}
-<div style="margin-bottom:16px;">
-  <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-sm">← Back</a>
+<div style="margin-bottom:20px;">
+  <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-sm">← Back to Dashboard</a>
 </div>
 
-<div class="page-header">
-  <h1>Research Results</h1>
-  <p>{{ article.created_at[:10] }} &nbsp;&bull;&nbsp; Topic: <strong>{{ article.topic[:80] ~ ('…' if article.topic and article.topic|length > 80 else '') }}</strong>{% if article.word_count %} &mdash; {{ article.word_count }} words{% endif %}</p>
+<!-- Article header -->
+<div class="article-header">
+  <div class="article-header-topic">{{ (article.topic or 'Research')[:80] ~ ('…' if article.topic and article.topic|length > 80 else '') }}</div>
+  <h1 class="article-header-title">{{ article.title }}</h1>
+  <div class="article-header-meta">
+    <span class="article-meta-pill">📅 {{ article.created_at[:10] }}</span>
+    {% if article.word_count %}<span class="article-meta-pill">📝 {{ article.word_count }} words</span>{% endif %}
+    <button class="article-meta-pill article-copy-btn" id="copy-article-btn" title="Copy article text">Copy Article</button>
+  </div>
 </div>
 
-<div class="card">
+<!-- Content -->
+<div class="card article-card-page">
   <div class="article-content" id="article-body">
     {{ content | safe }}
   </div>
 </div>
 
 <style>
+/* ── Article page header ── */
+.article-header {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.article-header-topic {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.article-header-title {
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--text);
+  margin-bottom: 14px;
+  max-width: 760px;
+}
+.article-header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.article-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--accent-light);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: none;
+  cursor: default;
+}
+.article-copy-btn {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+  transition: background 0.15s;
+}
+.article-copy-btn:hover { background: var(--border); }
+
+/* ── Article content card ── */
+.article-card-page {
+  border-top: 3px solid var(--accent);
+  padding: 32px 40px;
+  max-width: 800px;
+}
+.article-content {
+  max-width: 100%;
+  font-size: 0.95rem;
+  line-height: 1.75;
+}
+.article-content h1 { font-size: 1.4rem; margin-bottom: 8px; }
+.article-content h2 {
+  font-size: 1.1rem; font-weight: 700;
+  margin: 28px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.article-content h3 { font-size: 1rem; font-weight: 600; margin: 20px 0 8px; }
+.article-content p { margin-bottom: 14px; }
+.article-content ul, .article-content ol { padding-left: 22px; margin-bottom: 14px; }
+.article-content li { margin-bottom: 6px; }
+.article-content a { color: var(--accent); }
+.article-content a:hover { text-decoration: underline; }
+.article-content code {
+  background: var(--accent-light);
+  padding: 2px 6px; border-radius: 4px;
+  font-size: 0.85em; font-family: 'Fira Code', 'Consolas', monospace;
+}
+.article-content pre {
+  background: var(--accent-light);
+  padding: 16px 18px; border-radius: 8px;
+  overflow-x: auto; margin-bottom: 16px;
+  border-left: 3px solid var(--accent);
+}
+.article-content blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 10px 16px;
+  margin: 0 0 14px;
+  background: var(--accent-light);
+  border-radius: 0 6px 6px 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Collapsible section cards ── */
 .research-card {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -55,11 +158,16 @@
   color: var(--text);
 }
 .research-card-body.open { display: block; }
+
+@media (max-width: 768px) {
+  .article-card-page { padding: 20px 16px; }
+  .article-header-title { font-size: 1.3rem; }
+}
 </style>
 
 <script>
 (function () {
-  // ── Copy buttons on all code blocks ──────────────────────────────────────
+  // ── Copy buttons on code blocks ─────────────────────────────────────────
   const articleBody = document.getElementById('article-body');
   if (articleBody) {
     articleBody.querySelectorAll('pre').forEach(function (pre) {
@@ -89,20 +197,29 @@
       pre.appendChild(btn);
     });
   }
+
+  // ── Copy full article text ───────────────────────────────────────────────
+  const copyBtn = document.getElementById('copy-article-btn');
+  if (copyBtn && articleBody) {
+    copyBtn.addEventListener('click', function () {
+      const text = articleBody.innerText.trim();
+      navigator.clipboard.writeText(text).then(function () {
+        copyBtn.textContent = 'Copied!';
+        setTimeout(function () { copyBtn.textContent = 'Copy Article'; }, 2500);
+      });
+    });
+  }
 })();
 
 (function () {
   const body = document.getElementById('article-body');
   if (!body) return;
 
-  // Find all h3 elements and wrap them + their following siblings into cards
   const h3s = Array.from(body.querySelectorAll('h3'));
   if (h3s.length === 0) return;
 
   h3s.forEach(function (h3) {
     const title = h3.textContent.trim();
-
-    // Collect all siblings until next h3 or h2
     const siblings = [];
     let next = h3.nextSibling;
     while (next && !(next.nodeName === 'H3' || next.nodeName === 'H2')) {
@@ -110,7 +227,6 @@
       next = next.nextSibling;
     }
 
-    // Build card
     const card = document.createElement('div');
     card.className = 'research-card';
 
@@ -130,7 +246,6 @@
     card.appendChild(header);
     card.appendChild(cardBody);
 
-    // Replace h3 + siblings with card
     h3.parentNode.insertBefore(card, h3);
     h3.remove();
     siblings.forEach(function (s) {
