@@ -102,9 +102,10 @@ def _run_safe(handler, payload, user_id, job_id):
 Dispatch: research→research_agent | job_search→job_scraper | prompt_gen/skill_gen→prompt_generator
 Use lazy imports inside dispatch to avoid circular imports.
 
-### 3e. research_agent.py — core pipeline
-Claude subprocess (ALWAYS this pattern — never anthropic SDK):
+### 3e. utils.py — shared Claude subprocess (create FIRST, import everywhere)
 ```python
+import subprocess
+
 def call_claude(prompt, timeout=120):
     try:
         r = subprocess.run(["claude", "-p"], input=prompt,
@@ -116,7 +117,12 @@ def call_claude(prompt, timeout=120):
                            input=prompt.encode('utf-8'),
                            capture_output=True, timeout=timeout)
         return r.stdout.decode('utf-8', errors='replace').strip()
+# All pipeline files: from utils import call_claude
+# NEVER import anthropic. NEVER ask for API key.
 ```
+
+### 3f. research_agent.py — core pipeline
+`from utils import call_claude`
 Pipeline:
 1. DDGS().text(topic, max_results=10)
 2. Filter: skip .cn .ru .jp .kr domains; skip baidu/zhidao/sina/weibo in URL
@@ -126,26 +132,28 @@ Pipeline:
 6. Write research/<user_id>/YYYY-MM-DD_<slug>.md (encoding='utf-8')
 7. models.create_article + models.update_job(status='done', result_slug=slug)
 
-### 3f. job_scraper.py
+### 3g. job_scraper.py
+`from utils import call_claude`
 1. DDGS().text(f"{query} job opening", max_results=15)
 2. Claude: "Extract as JSON array [{title,company,location,salary,url,tags:[]}]. JSON only."
 3. models.update_job(status='done', result_data=json.dumps(jobs))
 
-### 3g. prompt_generator.py
+### 3h. prompt_generator.py
+`from utils import call_claude`
 PROMPT_META: ≤200-token action-first prompt + token estimate + GPT-4 comparison table + edge cases
 SKILL_META: ≤500-token Claude Code skill .md with triggers, numbered steps, constraints, edge cases
 Both: call_claude(meta + "\n\nUser request: " + description) → save as article
 
-### 3h. admin.py — Flask Blueprint (url_prefix='/admin')
+### 3i. admin.py — Flask Blueprint (url_prefix='/admin')
 Routes: GET /  GET /users  POST /users/<id>/set-role  GET /users/<id>
         POST /users/<id>/toggle  POST /users/<id>/delete
         GET /jobs  POST /jobs/<id>/delete  POST /jobs/delete-errors
 Delete user: shutil.rmtree(research/<user_id>/) + delete all DB records
 Stats: COUNT users, active; COUNT articles; GROUP BY job status; 10 recent jobs
 
-### 3i. app.py — entry point
+### 3j. app.py — entry point
 Register admin blueprint. Define all user/API routes.
-Startup: init_db() + os.makedirs(RESEARCH_BASE_DIR) + app.run(0.0.0.0:5000)
+Startup: init_db() + os.makedirs(RESEARCH_BASE_DIR) + app.run(0.0.0.0:5000, use_reloader=False)
 Error handlers: 403 → errors/403.html | 404 → errors/404.html
 
 ---
