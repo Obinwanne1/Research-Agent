@@ -8,3 +8,4 @@ class Config:
     CLAUDE_TIMEOUT = int(os.environ.get("CLAUDE_TIMEOUT", "120"))
     PORT = int(os.environ.get("PORT", "5000"))
     DEBUG = os.environ.get("DEBUG", "true").lower() == "true"
+    SESSION_LIFETIME_MINUTES = int(os.environ.get("SESSION_LIFETIME_MINUTES", "30"))

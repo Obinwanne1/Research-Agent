@@ -3,6 +3,7 @@ import threading
 import json
 from datetime import datetime
 from config import Config
+import secrets
 
 _db_lock = threading.Lock()
 
@@ -60,6 +61,27 @@ def init_db():
         """)
         conn.commit()
 
+        # Migrate: add must_change_password column if missing
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0")
+            conn.commit()
+        except Exception:
+            pass  # Column already exists
+
+        # Password reset tokens table
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id    INTEGER NOT NULL,
+                token      TEXT NOT NULL UNIQUE,
+                expires_at TEXT NOT NULL,
+                used       INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+        conn.commit()
+
         # Migrate: promote oldest admin to superadmin if no superadmin exists
         has_superadmin = conn.execute(
             "SELECT COUNT(*) FROM users WHERE role = 'superadmin'"
@@ -101,13 +123,57 @@ def create_user(email, password_hash, display_name, role="user"):
     with _db_lock:
         conn = get_conn()
         conn.execute(
-            "INSERT INTO users (email, password_hash, display_name, role) VALUES (?, ?, ?, ?)",
+            "INSERT INTO users (email, password_hash, display_name, role, must_change_password) VALUES (?, ?, ?, ?, 1)",
             (email, password_hash, display_name, role)
         )
         conn.commit()
         row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
         conn.close()
         return dict(row)
+
+
+def update_user_password(user_id, password_hash):
+    with _db_lock:
+        conn = get_conn()
+        conn.execute(
+            "UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?",
+            (password_hash, user_id)
+        )
+        conn.commit()
+        conn.close()
+
+
+def create_reset_token(user_id, token, expires_at):
+    with _db_lock:
+        conn = get_conn()
+        conn.execute(
+            "UPDATE password_reset_tokens SET used = 1 WHERE user_id = ? AND used = 0",
+            (user_id,)
+        )
+        conn.execute(
+            "INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)",
+            (user_id, token, expires_at)
+        )
+        conn.commit()
+        conn.close()
+
+
+def get_reset_token(token):
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0",
+        (token,)
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def use_reset_token(token_id):
+    with _db_lock:
+        conn = get_conn()
+        conn.execute("UPDATE password_reset_tokens SET used = 1 WHERE id = ?", (token_id,))
+        conn.commit()
+        conn.close()
 
 
 def update_last_login(user_id):
