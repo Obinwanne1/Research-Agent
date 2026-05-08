@@ -15,7 +15,7 @@ pip install flask ddgs markdown requests werkzeug waitress
 
 ## File Tree
 ```
-app.py  auth.py  admin.py  background.py  config.py  models.py
+app.py  auth.py  admin.py  background.py  config.py  models.py  utils.py
 research_agent.py  job_scraper.py  prompt_generator.py  requirements.txt
 templates/base.html  index.html  dashboard.html  article.html  jobs.html
 templates/auth/login.html  register.html
@@ -108,7 +108,7 @@ def _run_safe(handler, payload, user_id, job_id):
 Dispatch: research→research_agent.run_research_task | job_search→job_scraper.run_job_search_task | prompt_gen/skill_gen→prompt_generator.run_*_task
 Use lazy imports inside _run_safe to avoid circular imports.
 
-## Claude Subprocess (used in ALL pipelines — never use anthropic SDK)
+## utils.py — shared Claude subprocess (import from here in ALL pipeline files)
 ```python
 import subprocess
 
@@ -127,6 +127,10 @@ def call_claude(prompt, timeout=120):
             timeout=timeout
         )
         return r.stdout.decode('utf-8', errors='replace').strip()
+
+# Import in research_agent.py, job_scraper.py, prompt_generator.py:
+# from utils import call_claude
+# NEVER use anthropic SDK. NEVER ask for API key.
 ```
 
 ## Research Pipeline (research_agent.py)
@@ -260,7 +264,7 @@ import os
 init_db()
 os.makedirs(Config.RESEARCH_BASE_DIR, exist_ok=True)
 # register admin blueprint: app.register_blueprint(admin_bp, url_prefix='/admin')
-app.run(host='0.0.0.0', port=Config.PORT, debug=Config.DEBUG)
+app.run(host='0.0.0.0', port=Config.PORT, debug=Config.DEBUG, use_reloader=False)
 ```
 
 ## Windows-specific
