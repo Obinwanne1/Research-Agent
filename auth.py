@@ -16,14 +16,20 @@ def verify_password(password, password_hash):
     return check_password_hash(password_hash, password)
 
 
+_SPECIAL_CHARS = set("!@#$%^&*()_+-=[]{}|;:',.<>?/`~")
+
 def validate_password_strength(password):
     """Returns (ok, error_message)."""
     if len(password) < 8:
         return False, "Password must be at least 8 characters."
+    if len(password) > 128:
+        return False, "Password must be 128 characters or fewer."
     if not any(c.isdigit() for c in password):
         return False, "Password must contain at least one number."
     if not any(c.isalpha() for c in password):
         return False, "Password must contain at least one letter."
+    if not any(c in _SPECIAL_CHARS for c in password):
+        return False, "Password must contain at least one special character (!@#$%^&* etc)."
     return True, None
 
 
@@ -37,7 +43,10 @@ def generate_csrf_token():
 
 def validate_csrf():
     token = request.form.get('csrf_token', '')
-    return secrets.compare_digest(token, session.get('csrf_token', ''))
+    session_token = session.get('csrf_token', '')
+    if not token or not session_token:
+        return False
+    return secrets.compare_digest(token, session_token)
 
 
 # ── Rate limiter ──────────────────────────────────────────────────────────────
@@ -114,12 +123,13 @@ def admin_required(f):
     def decorated(*args, **kwargs):
         if "user_id" not in session:
             return redirect(url_for("login"))
-        if session.get("role") not in ("admin", "superadmin"):
-            abort(403)
         user = models.get_user_by_id(session["user_id"])
         if not user or not user["is_active"]:
             session.clear()
             return redirect(url_for("login"))
+        if user["role"] not in ("admin", "superadmin"):
+            abort(403)
+        session["role"] = user["role"]  # keep session in sync with DB
         return f(*args, **kwargs)
     return decorated
 
@@ -129,11 +139,12 @@ def superadmin_required(f):
     def decorated(*args, **kwargs):
         if "user_id" not in session:
             return redirect(url_for("login"))
-        if session.get("role") != "superadmin":
-            abort(403)
         user = models.get_user_by_id(session["user_id"])
         if not user or not user["is_active"]:
             session.clear()
             return redirect(url_for("login"))
+        if user["role"] != "superadmin":
+            abort(403)
+        session["role"] = user["role"]
         return f(*args, **kwargs)
     return decorated

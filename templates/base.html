@@ -27,9 +27,12 @@
         <span class="nav-icon">⚙</span> Admin
       </a>
       {% endif %}
-      <a href="{{ url_for('logout') }}">
-        <span class="nav-icon">⇥</span> Logout
-      </a>
+      <form method="POST" action="{{ url_for('logout') }}" style="margin:0">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="logout-nav-btn">
+          <span class="nav-icon">⇥</span> Logout
+        </button>
+      </form>
     </div>
     <div class="sidebar-footer">
       <div class="user-email">{{ session.get('email', '') }}</div>

@@ -21,6 +21,9 @@ import background
 app = Flask(__name__)
 app.secret_key = Config.SECRET_KEY
 app.permanent_session_lifetime = timedelta(minutes=Config.SESSION_LIFETIME_MINUTES)
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = not Config.DEBUG  # HTTPS only in production
 app.register_blueprint(admin_bp)
 
 # Expose csrf_token() in all templates
@@ -49,10 +52,23 @@ def session_timeout():
 @app.after_request
 def security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: https:; "
+        "font-src 'self'; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    )
+    if not Config.DEBUG:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
 
@@ -109,9 +125,15 @@ def register():
         return redirect(url_for("dashboard"))
     error = None
     if request.method == "POST":
-        # CSRF check
         if not validate_csrf():
             error = "Invalid request. Please try again."
+            return render_template("auth/register.html", error=error)
+
+        ip = request.remote_addr or "unknown"
+        allowed, retry_after = check_rate_limit(f"reg:{ip}")
+        if not allowed:
+            mins = max(1, retry_after // 60)
+            error = f"Too many attempts. Try again in {mins} minute(s)."
             return render_template("auth/register.html", error=error)
 
         email = request.form.get("email", "").strip().lower()
@@ -119,14 +141,18 @@ def register():
         display_name = request.form.get("display_name", "").strip()
 
         if not email or not password:
+            record_failed_attempt(f"reg:{ip}")
             error = "Email and password are required."
         else:
             ok, msg = validate_password_strength(password)
             if not ok:
+                record_failed_attempt(f"reg:{ip}")
                 error = msg
             elif models.get_user_by_email(email):
+                record_failed_attempt(f"reg:{ip}")
                 error = "An account with that email already exists."
             else:
+                clear_rate_limit(f"reg:{ip}")
                 role = "superadmin" if models.count_users() == 0 else "user"
                 user = models.create_user(email, hash_password(password), display_name or None, role)
                 set_session(user)
@@ -135,8 +161,10 @@ def register():
     return render_template("auth/register.html", error=error)
 
 
-@app.route("/logout")
+@app.route("/logout", methods=["POST"])
 def logout():
+    if not validate_csrf():
+        return redirect(url_for("dashboard"))
     session.clear()
     return redirect(url_for("index"))
 
@@ -188,6 +216,13 @@ def forgot_password():
             error = "Invalid request. Please try again."
             return render_template("auth/forgot_password.html", error=error)
 
+        ip = request.remote_addr or "unknown"
+        allowed, retry_after = check_rate_limit(f"forgot:{ip}")
+        if not allowed:
+            mins = max(1, retry_after // 60)
+            error = f"Too many attempts. Try again in {mins} minute(s)."
+            return render_template("auth/forgot_password.html", error=error)
+
         email = request.form.get("email", "").strip().lower()
         user = models.get_user_by_email(email)
         if user and user["is_active"]:
@@ -195,6 +230,7 @@ def forgot_password():
             expires_at = (datetime.utcnow() + timedelta(hours=1)).isoformat()
             models.create_reset_token(user["id"], token, expires_at)
             token_link = url_for("reset_password", token=token, _external=True)
+        record_failed_attempt(f"forgot:{ip}")
         # Always show success message (don't reveal if email exists)
     return render_template("auth/forgot_password.html", token_link=token_link, error=error)
 
@@ -254,9 +290,13 @@ def article(slug):
     if not art:
         abort(404)
     file_path = os.path.join(Config.RESEARCH_BASE_DIR, art["file_path"])
-    if not os.path.exists(file_path):
+    real_base = os.path.realpath(Config.RESEARCH_BASE_DIR)
+    real_path = os.path.realpath(file_path)
+    if not real_path.startswith(real_base + os.sep):
+        abort(403)
+    if not os.path.exists(real_path):
         abort(404)
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(real_path, "r", encoding="utf-8") as f:
         raw = f.read()
     html_content = md.markdown(raw, extensions=["fenced_code", "tables"])
     html_content = re.sub(
@@ -284,6 +324,9 @@ def job_results(job_id):
 
 # ── API routes ────────────────────────────────────────────────────────────────
 
+_MAX_INPUT = 500
+
+
 @app.route("/api/research", methods=["POST"])
 @login_required
 def api_research():
@@ -291,6 +334,8 @@ def api_research():
     topic = (data.get("topic") or "").strip()
     if not topic:
         return jsonify({"error": "topic is required"}), 400
+    if len(topic) > _MAX_INPUT:
+        return jsonify({"error": f"topic must be {_MAX_INPUT} characters or fewer"}), 400
     job_id = background.enqueue("research", {"topic": topic}, session["user_id"])
     return jsonify({"job_id": job_id})
 
@@ -302,6 +347,8 @@ def api_job_search():
     query = (data.get("query") or "").strip()
     if not query:
         return jsonify({"error": "query is required"}), 400
+    if len(query) > _MAX_INPUT:
+        return jsonify({"error": f"query must be {_MAX_INPUT} characters or fewer"}), 400
     job_id = background.enqueue("job_search", {"query": query, "topic": query}, session["user_id"])
     return jsonify({"job_id": job_id})
 
@@ -335,6 +382,8 @@ def api_generate_prompt():
     description = (data.get("description") or "").strip()
     if not description:
         return jsonify({"error": "description is required"}), 400
+    if len(description) > _MAX_INPUT:
+        return jsonify({"error": f"description must be {_MAX_INPUT} characters or fewer"}), 400
     job_id = background.enqueue("prompt_gen", {"topic": description}, session["user_id"])
     return jsonify({"job_id": job_id})
 
@@ -346,6 +395,8 @@ def api_generate_skill():
     description = (data.get("description") or "").strip()
     if not description:
         return jsonify({"error": "description is required"}), 400
+    if len(description) > _MAX_INPUT:
+        return jsonify({"error": f"description must be {_MAX_INPUT} characters or fewer"}), 400
     job_id = background.enqueue("skill_gen", {"topic": description}, session["user_id"])
     return jsonify({"job_id": job_id})
 

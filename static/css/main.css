@@ -74,6 +74,16 @@ a:hover { text-decoration: underline; }
 .sidebar-nav a.active { background: var(--accent); color: #fff; }
 .sidebar-nav .nav-icon { width: 18px; text-align: center; opacity: 0.75; }
 .sidebar-nav a:hover .nav-icon, .sidebar-nav a.active .nav-icon { opacity: 1; }
+.logout-nav-btn {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 9px 20px;
+  color: var(--text-sidebar); background: none; border: none; cursor: pointer;
+  font-size: 0.875rem; font-weight: 500; text-align: left;
+  border-radius: 0; transition: background 0.15s, color 0.15s;
+}
+.logout-nav-btn:hover { background: var(--bg-sidebar-hover); color: var(--text-sidebar-active); }
+.logout-nav-btn .nav-icon { width: 18px; text-align: center; opacity: 0.75; }
+.logout-nav-btn:hover .nav-icon { opacity: 1; }
 
 .sidebar-section-label {
   padding: 16px 20px 6px;
