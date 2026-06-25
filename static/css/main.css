@@ -330,13 +330,6 @@ body.dark .src-other     { background: #374151; color: #9ca3af; }
 .empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.4; }
 .empty-state h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 6px; }
 
-/* ── SVG icons ── */
-.icon { display: inline-block; vertical-align: middle; flex-shrink: 0; }
-.nav-icon .icon { width: 16px; height: 16px; }
-.empty-icon .icon { width: 40px; height: 40px; opacity: 0.35; stroke-width: 1.5; }
-.article-meta-pill .icon { width: 13px; height: 13px; margin-right: 1px; }
-.share-pill .icon { width: 13px; height: 13px; margin-right: 1px; }
-
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .sidebar { width: 100%; height: auto; position: relative; flex-direction: row; flex-wrap: wrap; }

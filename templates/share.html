@@ -50,9 +50,8 @@
   <div class="share-topic">{{ (article.topic or 'Research')[:80] }}</div>
   <h1 class="share-title">{{ article.title }}</h1>
   <div class="share-meta">
-    {% from 'macros/icons.html' import icon %}
-    <span class="share-pill">{{ icon('calendar', 13) }} {{ article.created_at[:10] }}</span>
-    {% if article.word_count %}<span class="share-pill">{{ icon('file-text', 13) }} {{ article.word_count }} words</span>{% endif %}
+    <span class="share-pill">📅 {{ article.created_at[:10] }}</span>
+    {% if article.word_count %}<span class="share-pill">📝 {{ article.word_count }} words</span>{% endif %}
   </div>
 
   <div class="share-content">

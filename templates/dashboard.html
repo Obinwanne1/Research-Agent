@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% from 'macros/icons.html' import icon %}
 {% block title %}Dashboard — Research Agent{% endblock %}
 
 {% block content %}
@@ -81,7 +80,7 @@
   {% endfor %}
 </div>
 <div id="articles-empty-search" style="display:none;" class="empty-state">
-  <div class="empty-icon">{{ icon('search', 40) }}</div>
+  <div class="empty-icon">🔍</div>
   <h3>No results</h3>
   <p>No articles match your search.</p>
 </div>
@@ -171,7 +170,7 @@
 </script>
 {% else %}
 <div class="empty-state" id="articles-empty">
-  <div class="empty-icon">{{ icon('file', 40) }}</div>
+  <div class="empty-icon">📄</div>
   <h3>No articles yet</h3>
   <p>Enter a topic above to research your first article.</p>
 </div>

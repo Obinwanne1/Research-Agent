@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% from 'macros/icons.html' import icon %}
 {% block title %}Jobs Monitor — Admin{% endblock %}
 
 {% block content %}
@@ -65,7 +64,7 @@
   </div>
   {% else %}
   <div class="empty-state">
-    <div class="empty-icon">{{ icon('clipboard', 40) }}</div>
+    <div class="empty-icon">📋</div>
     <h3>No jobs found</h3>
     <p>No jobs match the current filters.</p>
   </div>

@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% from 'macros/icons.html' import icon %}
 {% block title %}{{ article.title }} — Research Agent{% endblock %}
 
 {% block content %}
@@ -12,8 +11,8 @@
   <div class="article-header-topic">{{ (article.topic or 'Research')[:80] ~ ('…' if article.topic and article.topic|length > 80 else '') }}</div>
   <h1 class="article-header-title">{{ article.title }}</h1>
   <div class="article-header-meta">
-    <span class="article-meta-pill">{{ icon('calendar', 13) }} {{ article.created_at[:10] }}</span>
-    {% if article.word_count %}<span class="article-meta-pill">{{ icon('file-text', 13) }} {{ article.word_count }} words</span>{% endif %}
+    <span class="article-meta-pill">📅 {{ article.created_at[:10] }}</span>
+    {% if article.word_count %}<span class="article-meta-pill">📝 {{ article.word_count }} words</span>{% endif %}
     <button class="article-meta-pill article-copy-btn" id="copy-article-btn" title="Copy article text">Copy Article</button>
     <div class="export-dropdown">
       <button class="article-meta-pill export-toggle">Export ▾</button>
@@ -26,7 +25,7 @@
     <form method="POST" action="{{ url_for('article_share_toggle', slug=article.slug) }}" style="margin:0">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="article-meta-pill share-btn {{ 'share-btn-on' if article.is_public else '' }}">
-        {{ icon('globe', 13) if article.is_public else icon('lock', 13) }} {{ 'Public' if article.is_public else 'Private' }}
+        {{ '🔗 Public' if article.is_public else '🔒 Private' }}
       </button>
     </form>
     {% if article.is_public and article.share_token %}
