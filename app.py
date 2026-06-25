@@ -41,7 +41,10 @@ def session_timeout():
     if "user_id" in session:
         last = session.get("last_activity")
         if last:
-            elapsed = datetime.now(timezone.utc) - datetime.fromisoformat(last)
+            last_dt = datetime.fromisoformat(last)
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.replace(tzinfo=timezone.utc)
+            elapsed = datetime.now(timezone.utc) - last_dt
             if elapsed > timedelta(minutes=Config.SESSION_LIFETIME_MINUTES):
                 session.clear()
                 return redirect(url_for("login"))
