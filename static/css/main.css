@@ -57,57 +57,79 @@ a:hover { text-decoration: underline; }
 }
 
 .sidebar-brand {
-  padding: 20px 20px 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 22px 20px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.15);
 }
-.sidebar-brand h2 { font-size: 1rem; font-weight: 700; color: #fff; letter-spacing: 0.3px; }
-.sidebar-brand p { font-size: 0.72rem; color: var(--text-sidebar); opacity: 0.6; margin-top: 2px; }
+.sidebar-brand h2 { font-size: 1.05rem; font-weight: 800; color: #fff; letter-spacing: 0.2px; }
+.sidebar-brand p { font-size: 0.72rem; color: var(--text-sidebar); opacity: 0.55; margin-top: 3px; }
 
-.sidebar-nav { flex: 1; padding: 12px 0; }
-.sidebar-nav a {
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 20px; color: var(--text-sidebar);
-  font-size: 0.875rem; font-weight: 500;
-  border-radius: 0; transition: background 0.15s, color 0.15s;
-}
-.sidebar-nav a:hover { background: var(--bg-sidebar-hover); color: var(--text-sidebar-active); text-decoration: none; }
-.sidebar-nav a.active { background: var(--accent); color: #fff; }
-.sidebar-nav .nav-icon { width: 18px; text-align: center; opacity: 0.75; }
-.sidebar-nav a:hover .nav-icon, .sidebar-nav a.active .nav-icon { opacity: 1; }
+.sidebar-nav { flex: 1; padding: 8px 12px; }
+
+.sidebar-nav a,
 .logout-nav-btn {
   display: flex; align-items: center; gap: 10px;
-  width: 100%; padding: 9px 20px;
-  color: var(--text-sidebar); background: none; border: none; cursor: pointer;
-  font-size: 0.875rem; font-weight: 500; text-align: left;
-  border-radius: 0; transition: background 0.15s, color 0.15s;
+  padding: 8px 12px;
+  color: var(--text-sidebar);
+  font-size: 0.855rem; font-weight: 500;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+  width: 100%; background: none; border: none; cursor: pointer;
+  text-align: left; text-decoration: none;
 }
-.logout-nav-btn:hover { background: var(--bg-sidebar-hover); color: var(--text-sidebar-active); }
-.logout-nav-btn .nav-icon { width: 18px; text-align: center; opacity: 0.75; }
+.sidebar-nav a:hover,
+.logout-nav-btn:hover {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  text-decoration: none;
+}
+.sidebar-nav a.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+.sidebar-nav .nav-icon,
+.logout-nav-btn .nav-icon { width: 18px; text-align: center; opacity: 0.7; flex-shrink: 0; }
+.sidebar-nav a:hover .nav-icon,
+.sidebar-nav a.active .nav-icon,
 .logout-nav-btn:hover .nav-icon { opacity: 1; }
 
 .sidebar-section-label {
-  padding: 16px 20px 6px;
-  font-size: 0.68rem; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.8px;
-  color: var(--text-sidebar); opacity: 0.4;
+  display: block;
+  padding: 14px 12px 5px;
+  font-size: 0.65rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-sidebar); opacity: 0.5;
+}
+
+.sidebar-divider {
+  border: none;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  margin: 6px 12px;
 }
 
 .sidebar-footer {
   padding: 12px 16px;
   border-top: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.1);
   font-size: 0.8rem;
 }
-.sidebar-footer .user-email { color: var(--text-sidebar); opacity: 0.7; margin-bottom: 8px; word-break: break-all; }
+.sidebar-footer .user-email {
+  color: var(--text-sidebar); opacity: 0.65;
+  margin-bottom: 10px; word-break: break-all;
+  font-size: 0.78rem;
+}
 
 .theme-toggle {
   background: rgba(255,255,255,0.08);
-  border: none; cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.1);
+  cursor: pointer;
   color: var(--text-sidebar);
-  padding: 6px 10px; border-radius: 6px;
-  font-size: 0.8rem; display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 6px;
+  font-size: 0.78rem; display: flex; align-items: center; gap: 6px;
   transition: background 0.15s;
 }
-.theme-toggle:hover { background: rgba(255,255,255,0.15); }
+.theme-toggle:hover { background: rgba(255,255,255,0.14); }
 
 .main { margin-left: var(--sidebar-width); flex: 1; padding: 28px 32px; max-width: 100%; }
 
