@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Compare Articles — Research Agent{% endblock %}
+{% block content %}
+<div style="margin-bottom:16px;">
+  <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-sm">← Back to Dashboard</a>
+</div>
+
+<div class="page-header">
+  <h1>Article Comparison</h1>
+  <p class="page-subtitle">Comparing {{ articles|length }} articles side by side</p>
+</div>
+
+<!-- Column headers -->
+<div class="compare-headers">
+  {% for a in articles %}
+  <div class="compare-header-cell">
+    <div class="compare-col-topic">{{ (a.meta.topic or 'Research')[:60] }}</div>
+    <div class="compare-col-title">{{ a.meta.title }}</div>
+    <div class="compare-col-meta">{{ a.meta.created_at[:10] }}{% if a.meta.word_count %} · {{ a.meta.word_count }} words{% endif %}</div>
+    <a href="{{ url_for('article', slug=a.meta.slug) }}" class="btn btn-sm btn-secondary" style="margin-top:8px;">Open Article</a>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Side-by-side content -->
+<div class="compare-columns">
+  {% for a in articles %}
+  <div class="compare-col card">
+    <div class="compare-content article-content">
+      {{ a.html | safe }}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Claude synthesis -->
+{% if synthesis %}
+<div class="card" style="margin-top:2rem;border-top:3px solid var(--accent);">
+  <h2 style="margin-top:0;font-size:1rem;font-weight:700;color:var(--accent);">AI Synthesis</h2>
+  <div class="article-content">
+    {{ synthesis | safe }}
+  </div>
+</div>
+{% else %}
+<div class="card" style="margin-top:2rem;background:var(--bg-subtle,#f8faf8);text-align:center;padding:20px;color:var(--text-muted);font-size:0.875rem;">
+  Synthesis unavailable — Claude CLI not reachable or timed out.
+</div>
+{% endif %}
+
+<style>
+.compare-headers {
+  display: grid;
+  grid-template-columns: repeat({{ articles|length }}, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.compare-header-cell {
+  background: var(--accent-light);
+  border-radius: 8px;
+  padding: 14px 16px;
+  border-left: 3px solid var(--accent);
+}
+.compare-col-topic {
+  font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.8px;
+  color: var(--accent); font-weight: 700; margin-bottom: 4px;
+}
+.compare-col-title {
+  font-size: 0.95rem; font-weight: 700; line-height: 1.3; margin-bottom: 4px;
+}
+.compare-col-meta { font-size: 0.75rem; color: var(--text-muted); }
+
+.compare-columns {
+  display: grid;
+  grid-template-columns: repeat({{ articles|length }}, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.compare-col {
+  min-width: 0;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+.compare-col::-webkit-scrollbar { width: 4px; }
+.compare-col::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* Reuse article-content styles from article.html */
+.compare-content.article-content h2 {
+  font-size: 1rem; font-weight: 700;
+  margin: 20px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.compare-content.article-content h3 { font-size: 0.9rem; margin: 14px 0 6px; }
+
+@media (max-width: 900px) {
+  .compare-headers, .compare-columns { grid-template-columns: 1fr; }
+  .compare-col { max-height: none; }
+}
+</style>
+{% endblock %}

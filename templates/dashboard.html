@@ -55,13 +55,20 @@
   <div style="flex:1;min-width:180px;max-width:320px;">
     <input type="search" id="article-search" class="form-control" placeholder="Search articles…" autocomplete="off" style="font-size:0.85rem;padding:6px 10px;">
   </div>
+  {% if articles|length >= 2 %}
+  <span style="font-size:0.78rem;color:var(--text-muted);">Select 2–4 articles to compare</span>
+  {% endif %}
   {% endif %}
 </div>
 
 {% if articles %}
 <div class="card-grid" id="article-grid">
   {% for art in articles %}
-  <div class="card article-card">
+  <div class="card article-card" data-slug="{{ art.slug }}">
+    <label class="compare-checkbox-wrap" title="Select for comparison">
+      <input type="checkbox" class="compare-cb" value="{{ art.slug }}">
+      <span class="compare-check-icon"></span>
+    </label>
     <div class="card-topic">{{ (art.topic or 'Research')[:80] }}</div>
     <h3>{{ art.title }}</h3>
     <div class="card-meta">
@@ -77,6 +84,90 @@
   <h3>No results</h3>
   <p>No articles match your search.</p>
 </div>
+
+<!-- Floating compare bar -->
+<div id="compare-bar" style="display:none;">
+  <span id="compare-bar-label">0 selected</span>
+  <button id="compare-btn" class="btn btn-primary btn-sm">Compare Articles →</button>
+  <button id="compare-clear" class="btn btn-secondary btn-sm">Clear</button>
+</div>
+
+<style>
+.compare-checkbox-wrap {
+  position: absolute; top: 10px; right: 10px;
+  cursor: pointer; z-index: 2;
+}
+.compare-cb { display: none; }
+.compare-check-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 4px;
+  border: 2px solid var(--border); background: var(--bg-card);
+  transition: all 0.15s;
+}
+.compare-cb:checked + .compare-check-icon {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+.compare-cb:checked + .compare-check-icon::after { content: '✓'; font-size: 12px; color: #fff; font-weight: 700; }
+.article-card { position: relative; }
+.article-card.compare-selected { outline: 2px solid var(--accent); }
+#compare-bar {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 999px; padding: 10px 20px;
+  display: flex; align-items: center; gap: 12px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.18); z-index: 500;
+  font-size: 0.875rem; font-weight: 500;
+}
+</style>
+
+<script>
+(function () {
+  const bar = document.getElementById('compare-bar');
+  const barLabel = document.getElementById('compare-bar-label');
+  const compareBtn = document.getElementById('compare-btn');
+  const clearBtn = document.getElementById('compare-clear');
+
+  function getChecked() {
+    return Array.from(document.querySelectorAll('.compare-cb:checked')).map(cb => cb.value);
+  }
+
+  function updateBar() {
+    const slugs = getChecked();
+    const n = slugs.length;
+    if (n >= 2) {
+      bar.style.display = 'flex';
+      barLabel.textContent = n + ' selected';
+      compareBtn.disabled = n > 4;
+      compareBtn.title = n > 4 ? 'Max 4 articles' : '';
+    } else {
+      bar.style.display = 'none';
+    }
+    document.querySelectorAll('.article-card').forEach(function (card) {
+      const cb = card.querySelector('.compare-cb');
+      card.classList.toggle('compare-selected', cb && cb.checked);
+    });
+  }
+
+  document.addEventListener('change', function (e) {
+    if (e.target.classList.contains('compare-cb')) {
+      const checked = getChecked();
+      if (checked.length > 4) { e.target.checked = false; showToast('Max 4 articles for comparison.', 'error'); return; }
+      updateBar();
+    }
+  });
+
+  compareBtn.addEventListener('click', function () {
+    const slugs = getChecked();
+    if (slugs.length < 2) return;
+    window.location.href = '/compare?slugs=' + slugs.map(encodeURIComponent).join(',');
+  });
+
+  clearBtn.addEventListener('click', function () {
+    document.querySelectorAll('.compare-cb:checked').forEach(cb => { cb.checked = false; });
+    updateBar();
+  });
+})();
+</script>
 {% else %}
 <div class="empty-state" id="articles-empty">
   <div class="empty-icon">📄</div>

@@ -531,6 +531,61 @@ def settings_api_keys_revoke(key_id):
     return redirect(url_for("settings_api_keys"))
 
 
+# ── Article comparison ────────────────────────────────────────────────────────
+
+@app.route("/compare")
+@login_required
+def compare():
+    raw = request.args.get("slugs", "")
+    slugs = [s.strip() for s in raw.split(",") if s.strip()][:4]
+    if len(slugs) < 2:
+        flash("Select at least 2 articles to compare.", "error")
+        return redirect(url_for("dashboard"))
+
+    articles_data = []
+    for slug in slugs:
+        art = models.get_article(slug, session["user_id"])
+        if not art:
+            continue
+        file_path = os.path.join(Config.RESEARCH_BASE_DIR, art["file_path"])
+        real_base = os.path.realpath(Config.RESEARCH_BASE_DIR)
+        real_path = os.path.realpath(file_path)
+        if not real_path.startswith(real_base + os.sep) or not os.path.exists(real_path):
+            continue
+        with open(real_path, "r", encoding="utf-8") as f:
+            raw_md = f.read()
+        html = md.markdown(raw_md, extensions=["fenced_code", "tables"])
+        articles_data.append({"meta": art, "html": html, "raw": raw_md})
+
+    if len(articles_data) < 2:
+        flash("Could not load articles for comparison.", "error")
+        return redirect(url_for("dashboard"))
+
+    # Claude synthesis — compare all articles
+    excerpts = "\n\n---\n\n".join(
+        f"Article {i+1}: {a['meta']['title']}\n\n{a['raw'][:3000]}"
+        for i, a in enumerate(articles_data)
+    )
+    synthesis_html = None
+    try:
+        from utils import call_claude
+        prompt = (
+            f"You are comparing {len(articles_data)} research articles.\n\n"
+            f"{excerpts}\n\n"
+            "Write a concise comparison (300–500 words) structured as:\n"
+            "## What They Share\n"
+            "## Key Differences\n"
+            "## Synthesis\n"
+            "Plain English only. Output ONLY the markdown — no preamble."
+        )
+        synthesis_md = call_claude(prompt)
+        synthesis_html = md.markdown(synthesis_md, extensions=["fenced_code", "tables"])
+    except Exception:
+        pass  # synthesis is optional — page still works without it
+
+    return render_template("compare.html", articles=articles_data, synthesis=synthesis_html)
+
+
 # ── Public sharing ────────────────────────────────────────────────────────────
 
 @app.route("/article/<slug>/share", methods=["POST"])
