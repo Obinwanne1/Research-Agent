@@ -6,6 +6,7 @@ from datetime import datetime
 from ddgs import DDGS
 import models
 from config import Config
+from utils import call_claude, CLAUDE_CMD as _CLAUDE_CMD
 
 # ── Domain filter ─────────────────────────────────────────────────────────────
 BLOCKED_DOMAINS = (".cn", ".ru", ".jp", ".kr")
@@ -56,43 +57,6 @@ def fetch_pages(search_results, max_pages=2):
 
 # ── Claude CLI wrapper ────────────────────────────────────────────────────────
 
-def _resolve_claude():
-    """Find full path to claude CLI. On Windows, subprocess won't find .cmd via PATH."""
-    import shutil
-    npm_bin = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "npm")
-    # Try shutil.which with npm_bin injected
-    augmented = npm_bin + os.pathsep + os.environ.get("PATH", "")
-    found = shutil.which("claude", path=augmented)
-    if found:
-        return found
-    # Explicit fallback for Windows npm global install
-    cmd_path = os.path.join(npm_bin, "claude.cmd")
-    if os.path.exists(cmd_path):
-        return cmd_path
-    return "claude"  # last resort — may fail on Windows
-
-
-_CLAUDE_CMD = _resolve_claude()
-
-
-def call_claude(prompt):
-    result = subprocess.run(
-        [_CLAUDE_CMD, "-p"],
-        input=prompt,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        timeout=Config.CLAUDE_TIMEOUT,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"Claude CLI error: {result.stderr[:300]}")
-    output = result.stdout.strip()
-    # Sanitize: if Windows decoded UTF-8 bytes as CP1252, reverse it
-    try:
-        output = output.encode('cp1252').decode('utf-8')
-    except (UnicodeEncodeError, UnicodeDecodeError):
-        pass  # already clean UTF-8, leave as-is
-    return output
 
 
 # ── Slug generator ────────────────────────────────────────────────────────────

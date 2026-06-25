@@ -4,25 +4,7 @@ import subprocess
 from datetime import datetime
 import models
 from config import Config
-
-
-def call_claude(prompt):
-    result = subprocess.run(
-        ["claude", "-p"],
-        input=prompt,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        timeout=Config.CLAUDE_TIMEOUT
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"Claude CLI error: {result.stderr[:300]}")
-    output = result.stdout.strip()
-    try:
-        output = output.encode('cp1252').decode('utf-8')
-    except (UnicodeEncodeError, UnicodeDecodeError):
-        pass
-    return output
+from utils import call_claude
 
 
 def make_slug(prefix, topic):
