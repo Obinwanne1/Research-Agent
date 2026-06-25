@@ -98,9 +98,17 @@ def run_research_task(payload, user_id, job_id):
             models.update_job(job_id, status="error", message="No search results found.")
             return
 
-        # Detect if topic requests a specific number of items (e.g. "20 top AI", "top 10 tools")
-        quantity_match = re.search(r'\b(\d+)\b', topic)
-        requested_count = int(quantity_match.group(1)) if quantity_match else None
+        # Detect list requests like "top 10 tools" or "20 best AI apps"
+        # Exclude patterns like "100 words" / "500 word" to avoid misreading word-count instructions
+        quantity_match = re.search(
+            r'\b(\d+)\s+(?:top|best|types?|examples?|ways?|tips?|tools?|steps?|ideas?|apps?|reasons?|methods?)\b'
+            r'|(?:top|best)\s+(\d+)\b',
+            topic, re.IGNORECASE
+        )
+        if quantity_match:
+            requested_count = int(quantity_match.group(1) or quantity_match.group(2))
+        else:
+            requested_count = None
         max_pages = 5 if requested_count and requested_count >= 10 else 3
 
         # Step 2: Fetch pages
