@@ -1,14 +1,17 @@
+import json
 import os
 import re
 import subprocess
 import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from ddgs import DDGS
 import models
 from config import Config
-from utils import call_claude, CLAUDE_CMD as _CLAUDE_CMD
+from utils import call_claude, call_claude_fast
 
 # ── Domain filter ─────────────────────────────────────────────────────────────
+
 BLOCKED_DOMAINS = (".cn", ".ru", ".jp", ".kr")
 BLOCKED_KEYWORDS = ("baidu.", "zhidao.", "sina.", "weibo.")
 
@@ -18,45 +21,82 @@ def _is_blocked(url):
            any(kw in url_lower for kw in BLOCKED_KEYWORDS)
 
 
-# ── Search sources registry ───────────────────────────────────────────────────
-# To add a new source: write a function matching (topic: str) -> list[dict]
-# where each dict has "url" and "title" keys, then add it here.
+# ── Planning step — multi-step reasoning ──────────────────────────────────────
 
-def search_duckduckgo(topic):
-    with DDGS() as ddgs:
-        results = list(ddgs.text(topic, max_results=10))
-    return [{"url": r["href"], "title": r["title"]} for r in results if "href" in r]
+def plan_search_queries(topic):
+    """Ask Claude to decompose the topic into 3 focused sub-queries."""
+    prompt = (
+        f'Topic: {topic}\n\n'
+        'Generate exactly 3 focused web search queries to research this topic thoroughly.\n'
+        'Each query must target a different angle: (1) broad overview, (2) specific evidence/data, (3) real-world examples.\n'
+        'Return ONLY a JSON array of 3 strings. No explanation, no markdown.\n'
+        'Example: ["query one", "query two", "query three"]'
+    )
+    try:
+        raw = call_claude_fast(prompt)
+        raw = re.sub(r"^```[a-z]*\n?", "", raw.strip())
+        raw = re.sub(r"\n?```$", "", raw.strip())
+        queries = json.loads(raw)
+        if isinstance(queries, list):
+            return [topic] + [str(q) for q in queries[:3]]
+    except Exception:
+        pass
+    return [topic]  # fallback: original topic only
 
-SEARCH_SOURCES = {
-    "duckduckgo": search_duckduckgo,
-}
+
+# ── Search ────────────────────────────────────────────────────────────────────
+
+def _search_one(query, max_results=8):
+    try:
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=max_results))
+        return [{"url": r["href"], "title": r["title"]} for r in results if "href" in r]
+    except Exception:
+        return []
 
 
-# ── Page fetcher ──────────────────────────────────────────────────────────────
+def search_all_queries(queries):
+    """Run all search queries in parallel, deduplicate by URL."""
+    all_results = []
+    seen_urls = set()
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        futures = {ex.submit(_search_one, q): q for q in queries}
+        for fut in as_completed(futures):
+            for item in fut.result():
+                if item["url"] not in seen_urls and not _is_blocked(item["url"]):
+                    seen_urls.add(item["url"])
+                    all_results.append(item)
+    return all_results
 
-def fetch_pages(search_results, max_pages=2):
+
+# ── Page fetcher — parallel ───────────────────────────────────────────────────
+
+_FETCH_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ResearchAgent/1.0)"}
+
+
+def _fetch_one(result):
+    url = result["url"]
+    try:
+        resp = requests.get(url, timeout=10, headers=_FETCH_HEADERS)
+        if resp.status_code == 200 and "text/html" in resp.headers.get("content-type", ""):
+            text = re.sub(r"<[^>]+>", " ", resp.text)
+            text = re.sub(r"\s+", " ", text).strip()
+            return {"url": url, "title": result["title"], "content": text[:8000]}
+    except Exception:
+        pass
+    return None
+
+
+def fetch_pages_parallel(search_results, max_pages=5):
+    candidates = [r for r in search_results if not _is_blocked(r["url"])]
     fetched = []
-    headers = {"User-Agent": "Mozilla/5.0 (compatible; ResearchAgent/1.0)"}
-    for result in search_results:
-        if len(fetched) >= max_pages:
-            break
-        url = result["url"]
-        if _is_blocked(url):
-            continue
-        try:
-            resp = requests.get(url, timeout=10, headers=headers)
-            if resp.status_code == 200 and "text/html" in resp.headers.get("content-type", ""):
-                # Strip HTML tags simply
-                text = re.sub(r"<[^>]+>", " ", resp.text)
-                text = re.sub(r"\s+", " ", text).strip()
-                fetched.append({"url": url, "title": result["title"], "content": text[:8000]})
-        except Exception:
-            continue
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        futures = [ex.submit(_fetch_one, r) for r in candidates[:max_pages * 2]]
+        for fut in as_completed(futures):
+            result = fut.result()
+            if result and len(fetched) < max_pages:
+                fetched.append(result)
     return fetched
-
-
-# ── Claude CLI wrapper ────────────────────────────────────────────────────────
-
 
 
 # ── Slug generator ────────────────────────────────────────────────────────────
@@ -71,84 +111,92 @@ def make_slug(topic):
 
 def run_research_task(payload, user_id, job_id):
     topic = payload["topic"]
-    source = payload.get("source", "duckduckgo")
 
     try:
-        # Step 1: Search
-        models.update_job(job_id, status="running", message="Searching the web...")
-        results = SEARCH_SOURCES[source](topic)
+        # Step 1: Plan — decompose topic into sub-queries
+        models.update_job(job_id, status="running", message="Planning search strategy...")
+        queries = plan_search_queries(topic)
+        models.update_job(job_id, message=f"Searching {len(queries)} angles in parallel...")
+
+        # Step 2: Search (cache-first, then live DDGS)
+        cache_key = topic.lower().strip()
+        cached = models.get_search_cache(cache_key, ttl_hours=Config.SEARCH_CACHE_TTL_HOURS)
+        if cached:
+            results = cached
+            models.update_job(job_id, message="Using cached search results...")
+        else:
+            results = search_all_queries(queries)
+            if results:
+                models.set_search_cache(cache_key, results)
         if not results:
             models.update_job(job_id, status="error", message="No search results found.")
             return
 
-        # Detect list requests like "top 10 tools" or "20 best AI apps"
-        # Exclude patterns like "100 words" / "500 word" to avoid misreading word-count instructions
+        # Detect explicit list requests (top 10 tools, 20 best apps, etc.)
         quantity_match = re.search(
             r'\b(\d+)\s+(?:top|best|types?|examples?|ways?|tips?|tools?|steps?|ideas?|apps?|reasons?|methods?)\b'
             r'|(?:top|best)\s+(\d+)\b',
             topic, re.IGNORECASE
         )
-        if quantity_match:
-            requested_count = int(quantity_match.group(1) or quantity_match.group(2))
-        else:
-            requested_count = None
-        max_pages = 5 if requested_count and requested_count >= 10 else 3
+        requested_count = int(quantity_match.group(1) or quantity_match.group(2)) if quantity_match else None
+        max_pages = 6 if requested_count and requested_count >= 10 else 5
 
-        # Step 2: Fetch pages
-        models.update_job(job_id, message="Fetching pages...")
-        pages = fetch_pages(results, max_pages=max_pages)
+        # Step 3: Fetch pages in parallel
+        models.update_job(job_id, message="Fetching pages in parallel...")
+        pages = fetch_pages_parallel(results, max_pages=max_pages)
         if not pages:
             models.update_job(job_id, status="error", message="Could not fetch any pages.")
             return
 
-        # Step 3: Summarize with Claude CLI
-        models.update_job(job_id, message="Summarizing with Claude...")
-        sources_text = "\n\n".join(
-            f"SOURCE: {p['url']}\nTITLE: {p['title']}\nCONTENT:\n{p['content']}"
-            for p in pages
+        # Step 4: Summarize with Claude (strict grounding + citations)
+        models.update_job(job_id, message=f"Summarising {len(pages)} sources with Claude...")
+
+        numbered_sources = "\n\n".join(
+            f"[Source {i+1}] URL: {p['url']}\nTITLE: {p['title']}\nCONTENT:\n{p['content']}"
+            for i, p in enumerate(pages)
         )
 
         if requested_count:
             count_instruction = (
-                f"\nIMPORTANT: The topic explicitly requests {requested_count} items. "
-                f"You MUST list ALL {requested_count} of them — no more, no less. "
-                f"Number each item using ### and its number (e.g. ### 1. Item Name). "
-                f"Do not summarize or group items together to reach a shorter count."
+                f"\nIMPORTANT: The topic requests exactly {requested_count} items. "
+                f"List ALL {requested_count} using ### headings numbered 1 to {requested_count}. "
+                f"Do not group or abbreviate."
             )
-            word_guide = f"{requested_count * 80}–{requested_count * 120}"
+            word_guide = f"{requested_count * 60}–{requested_count * 100}"
         else:
             count_instruction = ""
             word_guide = "600–1000"
 
         prompt = f"""Research topic: {topic}
 
-Here is content fetched from the web:
+GROUNDING RULE: Use ONLY facts explicitly stated in the source content below.
+Do NOT add external knowledge, statistics, dates, names, or claims not present in these sources.
+If a source does not support a claim, omit it entirely.
+For each key fact or statistic, add an inline citation: [Source 1], [Source 2], etc.
+Sources are numbered in the order they appear below.
 
-{sources_text}
+{numbered_sources}
 
 Write a detailed research summary in plain English ({word_guide} words).{count_instruction}
 Structure:
 ## Overview
 ## Key Findings
-(use ### for each individual item heading)
+(use ### for each individual item or finding)
 
-Do NOT include a Sources section — it will be added automatically.
-Output ONLY the markdown content — no preamble."""
+Do NOT include a Sources section — it will be appended automatically.
+Output ONLY the markdown — no preamble, no closing remarks."""
 
         summary = call_claude(prompt)
-
-        # Strip any Sources section Claude may have added anyway
         summary = re.sub(r'\n## Sources.*', '', summary, flags=re.DOTALL).strip()
 
-        # Build verified sources from pages we actually fetched (all returned HTTP 200)
-        # Use raw HTML so links are clickable with target="_blank" and title chars can't break markdown
+        # Verified sources (all returned HTTP 200)
         source_items = "\n".join(
             f'<li><a href="{p["url"]}" target="_blank" rel="noopener noreferrer">{p["title"] or p["url"]}</a></li>'
             for p in pages
         )
         sources_md = f"\n\n## Sources\n<ul>\n{source_items}\n</ul>"
 
-        # Step 4: Save to file
+        # Step 5: Save
         models.update_job(job_id, message="Saving article...")
         slug = make_slug(topic)
         user_dir = os.path.join(Config.RESEARCH_BASE_DIR, str(user_id))
@@ -161,16 +209,11 @@ Output ONLY the markdown content — no preamble."""
             f.write(sources_md)
 
         word_count = len(summary.split())
-        title = topic.title()
-
         models.create_article(
-            user_id=user_id,
-            job_id=job_id,
-            title=title,
-            slug=slug,
+            user_id=user_id, job_id=job_id,
+            title=topic.title(), slug=slug,
             file_path=os.path.join(str(user_id), f"{slug}.md"),
-            topic=topic,
-            word_count=word_count
+            topic=topic, word_count=word_count
         )
         models.update_job(job_id, status="done", message="Research complete!", result_slug=slug)
 

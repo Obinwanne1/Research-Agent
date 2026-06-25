@@ -4,7 +4,7 @@ import subprocess
 from datetime import datetime
 import models
 from config import Config
-from utils import call_claude
+from utils import call_claude_fast as call_claude
 
 
 def make_slug(prefix, topic):

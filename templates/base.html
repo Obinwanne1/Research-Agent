@@ -21,7 +21,14 @@
         <span class="nav-icon">⊞</span> Dashboard
       </a>
 
+      <a href="{{ url_for('schedules') }}" class="{{ 'active' if request.endpoint == 'schedules' else '' }}">
+        <span class="nav-icon">⏱</span> Schedules
+      </a>
+
       <span class="sidebar-section-label">Account</span>
+      <a href="{{ url_for('settings_api_keys') }}" class="{{ 'active' if request.endpoint and 'api_keys' in request.endpoint else '' }}">
+        <span class="nav-icon">🔑</span> API Keys
+      </a>
       {% if session.get('role') in ('admin', 'superadmin') %}
       <a href="{{ url_for('admin.index') }}" class="{{ 'active' if request.blueprint == 'admin' else '' }}">
         <span class="nav-icon">⚙</span> Admin

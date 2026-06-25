@@ -14,6 +14,26 @@
     <span class="article-meta-pill">📅 {{ article.created_at[:10] }}</span>
     {% if article.word_count %}<span class="article-meta-pill">📝 {{ article.word_count }} words</span>{% endif %}
     <button class="article-meta-pill article-copy-btn" id="copy-article-btn" title="Copy article text">Copy Article</button>
+    <div class="export-dropdown">
+      <button class="article-meta-pill export-toggle">Export ▾</button>
+      <div class="export-menu">
+        <a href="{{ url_for('article_download_md', slug=article.slug) }}">Download .md</a>
+        <button onclick="window.print()">Print / Save PDF</button>
+      </div>
+    </div>
+    <!-- Share toggle -->
+    <form method="POST" action="{{ url_for('article_share_toggle', slug=article.slug) }}" style="margin:0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="article-meta-pill share-btn {{ 'share-btn-on' if article.is_public else '' }}">
+        {{ '🔗 Public' if article.is_public else '🔒 Private' }}
+      </button>
+    </form>
+    {% if article.is_public and article.share_token %}
+    <button class="article-meta-pill article-copy-btn" id="copy-share-btn"
+            data-url="{{ request.host_url }}share/{{ article.share_token }}">
+      Copy Link
+    </button>
+    {% endif %}
   </div>
 </div>
 
@@ -159,9 +179,66 @@
 }
 .research-card-body.open { display: block; }
 
+/* ── Share button ── */
+.share-btn { cursor: pointer; transition: background 0.15s; }
+.share-btn:hover { background: var(--border); }
+.share-btn-on { background: #d1fae5; color: #065f46; }
+body.dark .share-btn-on { background: #064e3b; color: #6ee7b7; }
+
+/* ── Export dropdown ── */
+.export-dropdown { position: relative; display: inline-flex; }
+.export-toggle { cursor: pointer; color: var(--accent); font-weight: 600; }
+.export-toggle:hover { background: var(--border); }
+.export-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-md);
+  min-width: 160px;
+  z-index: 200;
+  overflow: hidden;
+}
+.export-dropdown:hover .export-menu,
+.export-dropdown:focus-within .export-menu { display: block; }
+.export-menu a,
+.export-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 14px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+.export-menu a:hover,
+.export-menu button:hover { background: var(--accent-light); color: var(--accent); }
+
 @media (max-width: 768px) {
   .article-card-page { padding: 20px 16px; }
   .article-header-title { font-size: 1.3rem; }
+}
+
+/* ── Print styles ── */
+@media print {
+  .sidebar, .btn-secondary, .article-meta-pill, .export-dropdown,
+  .research-card-toggle { display: none !important; }
+  .main-content { margin-left: 0 !important; padding: 0 !important; }
+  .article-card-page { box-shadow: none; border: none; padding: 0; max-width: 100%; }
+  .article-header { border-bottom: 1px solid #ccc; }
+  .article-header-title { font-size: 1.4rem; }
+  .research-card { border: none; }
+  .research-card-header { background: none; padding: 8px 0; font-size: 1rem; }
+  .research-card-body { display: block !important; padding: 0; }
+  body { background: #fff; color: #000; }
+  a { color: #000; }
 }
 </style>
 
@@ -195,6 +272,18 @@
         });
       });
       pre.appendChild(btn);
+    });
+  }
+
+  // ── Copy share link ──────────────────────────────────────────────────────
+  const copyShareBtn = document.getElementById('copy-share-btn');
+  if (copyShareBtn) {
+    copyShareBtn.addEventListener('click', function () {
+      const url = copyShareBtn.dataset.url;
+      navigator.clipboard.writeText(url).then(function () {
+        copyShareBtn.textContent = 'Copied!';
+        setTimeout(function () { copyShareBtn.textContent = 'Copy Link'; }, 2500);
+      });
     });
   }
 

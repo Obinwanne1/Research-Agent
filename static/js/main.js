@@ -41,7 +41,9 @@ document.addEventListener('DOMContentLoaded', function () {
       e.preventDefault();
       const query = document.getElementById('job-input').value.trim();
       if (!query) return;
-      await startJob('job_search', { query }, 'job_search');
+      const companyEl = document.getElementById('job-company');
+      const company = companyEl ? companyEl.value.trim() : '';
+      await startJob('job_search', { query, company }, 'job_search');
     });
   }
 
@@ -57,6 +59,29 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 });
+
+// ── SSE stream helper ──────────────────────────────────────────────────────
+function watchJob(jobId, onDone, onError) {
+  const es = new EventSource(`/api/stream/${jobId}`);
+
+  es.onmessage = function (e) {
+    let data;
+    try { data = JSON.parse(e.data); } catch (_) { return; }
+    updateSpinnerMsg(data.message || '...');
+    if (data.status === 'done') {
+      es.close();
+      onDone(data);
+    } else if (data.status === 'error') {
+      es.close();
+      onError(data.message || 'Job failed.');
+    }
+  };
+
+  es.onerror = function () {
+    es.close();
+    onError('Connection lost. Please try again.');
+  };
+}
 
 // ── Generator job ──────────────────────────────────────────────────────────
 async function startGeneratorJob(type, description) {
@@ -79,25 +104,13 @@ async function startGeneratorJob(type, description) {
     return;
   }
 
-  const poll = setInterval(async function () {
-    try {
-      const resp = await fetch(`/api/status/${jobId}`);
-      const data = await resp.json();
-      updateSpinnerMsg(data.message || '...');
-      if (data.status === 'done') {
-        clearInterval(poll);
-        hideSpinner();
-        window.location.href = `/article/${data.slug}`;
-      } else if (data.status === 'error') {
-        clearInterval(poll);
-        hideSpinner();
-        showToast(data.message || 'Generation failed.', 'error');
-      }
-    } catch (err) { /* keep polling */ }
-  }, 1500);
+  watchJob(jobId,
+    function (data) { hideSpinner(); window.location.href = `/article/${data.slug}`; },
+    function (msg)  { hideSpinner(); showToast(msg, 'error'); }
+  );
 }
 
-// ── Job polling ────────────────────────────────────────────────────────────
+// ── Job start + stream ─────────────────────────────────────────────────────
 async function startJob(type, payload, jobType) {
   const endpoint = type === 'research' ? '/api/research' : '/api/jobs/search';
   showSpinner('Starting...');
@@ -118,31 +131,19 @@ async function startJob(type, payload, jobType) {
     return;
   }
 
-  const poll = setInterval(async function () {
-    try {
-      const resp = await fetch(`/api/status/${jobId}`);
-      const data = await resp.json();
-      updateSpinnerMsg(data.message || '...');
-
-      if (data.status === 'done') {
-        clearInterval(poll);
-        hideSpinner();
-        if (jobType === 'research' && data.slug) {
-          window.location.href = `/article/${data.slug}`;
-        } else if (jobType === 'job_search') {
-          window.location.href = `/jobs/results/${jobId}`;
-        } else {
-          window.location.reload();
-        }
-      } else if (data.status === 'error') {
-        clearInterval(poll);
-        hideSpinner();
-        showToast(data.message || 'Research failed.', 'error');
+  watchJob(jobId,
+    function (data) {
+      hideSpinner();
+      if (jobType === 'research' && data.slug) {
+        window.location.href = `/article/${data.slug}`;
+      } else if (jobType === 'job_search') {
+        window.location.href = `/jobs/results/${jobId}`;
+      } else {
+        window.location.reload();
       }
-    } catch (err) {
-      // Network hiccup — keep polling
-    }
-  }, 1500);
+    },
+    function (msg) { hideSpinner(); showToast(msg, 'error'); }
+  );
 }
 
 // ── Spinner helpers ────────────────────────────────────────────────────────
@@ -163,6 +164,74 @@ function updateSpinnerMsg(msg) {
   const el = document.getElementById('spinner-msg');
   if (el) el.textContent = msg;
 }
+
+// ── Article search ─────────────────────────────────────────────────────────
+(function () {
+  const searchInput = document.getElementById('article-search');
+  if (!searchInput) return;
+
+  let debounceTimer;
+
+  searchInput.addEventListener('input', function () {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => runArticleSearch(this.value.trim()), 300);
+  });
+
+  async function runArticleSearch(q) {
+    const grid = document.getElementById('article-grid');
+    const emptySearch = document.getElementById('articles-empty-search');
+    const countEl = document.getElementById('article-count');
+    if (!grid) return;
+
+    if (!q) {
+      // Restore all cards
+      Array.from(grid.children).forEach(c => c.style.display = '');
+      if (emptySearch) emptySearch.style.display = 'none';
+      grid.style.display = '';
+      if (countEl) countEl.textContent = grid.children.length;
+      return;
+    }
+
+    try {
+      const resp = await fetch('/api/search/articles?q=' + encodeURIComponent(q));
+      const articles = await resp.json();
+      renderArticleCards(articles, grid, emptySearch, countEl);
+    } catch (err) {
+      // On network error leave current view unchanged
+    }
+  }
+
+  function renderArticleCards(articles, grid, emptySearch, countEl) {
+    if (articles.length === 0) {
+      grid.style.display = 'none';
+      if (emptySearch) emptySearch.style.display = '';
+      if (countEl) countEl.textContent = '0';
+      return;
+    }
+    grid.style.display = '';
+    if (emptySearch) emptySearch.style.display = 'none';
+    if (countEl) countEl.textContent = articles.length;
+    grid.innerHTML = articles.map(art => `
+      <div class="card article-card">
+        <div class="card-topic">${esc(art.topic || 'Research').slice(0, 80)}</div>
+        <h3>${esc(art.title)}</h3>
+        <div class="card-meta">
+          <span>${esc(art.created_at.slice(0, 10))}</span>
+          ${art.word_count ? `<span class="meta-sep">·</span><span>${art.word_count} words</span>` : ''}
+        </div>
+        <a href="/article/${esc(art.slug)}" class="btn btn-primary btn-read">Read Article</a>
+      </div>
+    `).join('');
+  }
+
+  function esc(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+})();
 
 // ── Toast notification ─────────────────────────────────────────────────────
 function showToast(msg, type) {

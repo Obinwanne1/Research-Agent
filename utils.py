@@ -19,14 +19,14 @@ def _resolve_claude():
 CLAUDE_CMD = _resolve_claude()
 
 
-def call_claude(prompt):
+def _run_claude(prompt, timeout):
     result = subprocess.run(
         [CLAUDE_CMD, "-p"],
         input=prompt,
         capture_output=True,
         text=True,
         encoding="utf-8",
-        timeout=Config.CLAUDE_TIMEOUT,
+        timeout=timeout,
     )
     if result.returncode != 0:
         raise RuntimeError(f"Claude CLI error: {result.stderr[:300]}")
@@ -36,3 +36,13 @@ def call_claude(prompt):
     except (UnicodeEncodeError, UnicodeDecodeError):
         pass
     return output
+
+
+def call_claude(prompt):
+    """Full timeout (120s) — for research summarisation."""
+    return _run_claude(prompt, Config.CLAUDE_TIMEOUT)
+
+
+def call_claude_fast(prompt):
+    """Fast timeout (60s) — for planning calls, prompt/skill gen."""
+    return _run_claude(prompt, Config.CLAUDE_FAST_TIMEOUT)

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}API Keys — Research Agent{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>API Keys</h1>
+  <p>Use API keys to call the Research Agent API from scripts, automation tools, or external apps.</p>
+</div>
+
+{% if new_key %}
+<div class="api-key-reveal card" style="margin-bottom:20px;border-left:4px solid var(--accent);">
+  <div style="font-weight:700;margin-bottom:8px;color:var(--accent);">New API Key — copy it now</div>
+  <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:10px;">This key will not be shown again.</div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <code id="new-key-val" style="flex:1;padding:10px 14px;background:var(--accent-light);border-radius:6px;font-size:0.82rem;word-break:break-all;border:1px solid var(--border);">{{ new_key }}</code>
+    <button class="btn btn-primary" onclick="copyNewKey()" id="copy-new-key-btn" style="white-space:nowrap;">Copy Key</button>
+  </div>
+</div>
+{% endif %}
+
+<!-- Create key form -->
+<div class="card" style="margin-bottom:24px;padding:20px 24px;">
+  <h2 style="font-size:0.95rem;font-weight:700;margin-bottom:14px;">Create New Key</h2>
+  <form method="POST" action="{{ url_for('settings_api_keys_create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="input-row" style="gap:10px;">
+      <input type="text" name="name" class="form-control" placeholder="Key name (e.g. n8n workflow, local script)" maxlength="80" style="flex:1;">
+      <button type="submit" class="btn btn-primary">Generate Key</button>
+    </div>
+  </form>
+</div>
+
+<!-- Existing keys -->
+<div class="page-header"><h2 style="font-size:1rem;font-weight:600;">Your Keys ({{ keys|length }})</h2></div>
+
+{% if keys %}
+<div class="table-wrap card">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Created</th>
+        <th>Last Used</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for key in keys %}
+      <tr>
+        <td style="font-weight:600;">{{ key.name }}</td>
+        <td>{{ key.created_at[:10] }}</td>
+        <td>{{ key.last_used_at[:10] if key.last_used_at else '—' }}</td>
+        <td>
+          {% if key.is_active %}
+            <span class="badge badge-done">Active</span>
+          {% else %}
+            <span class="badge badge-error">Revoked</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if key.is_active %}
+          <form method="POST" action="{{ url_for('settings_api_keys_revoke', key_id=key.id) }}" style="margin:0;" onsubmit="return confirm('Revoke this key? Any apps using it will stop working.')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm" style="background:var(--error);color:#fff;border:none;">Revoke</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">🔑</div>
+  <h3>No API keys yet</h3>
+  <p>Generate a key above to start using the API.</p>
+</div>
+{% endif %}
+
+<!-- Usage docs -->
+<div class="card" style="margin-top:28px;padding:20px 24px;">
+  <h2 style="font-size:0.95rem;font-weight:700;margin-bottom:14px;">Usage</h2>
+  <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px;">Pass the key via header on any <code>/api/*</code> endpoint:</p>
+  <pre style="font-size:0.8rem;padding:14px 16px;background:var(--accent-light);border-radius:6px;overflow-x:auto;border-left:3px solid var(--accent);">curl -X POST https://your-domain/api/research \
+  -H "X-API-Key: ra_..." \
+  -H "Content-Type: application/json" \
+  -d '{"topic": "quantum computing breakthroughs 2025"}'</pre>
+  <p style="font-size:0.82rem;color:var(--text-muted);margin-top:12px;">Also accepts <code>Authorization: Bearer ra_...</code>. Poll <code>/api/status/&lt;job_id&gt;</code> until <code>status == "done"</code>.</p>
+</div>
+
+<script>
+function copyNewKey() {
+  const val = document.getElementById('new-key-val').textContent.trim();
+  const btn = document.getElementById('copy-new-key-btn');
+  navigator.clipboard.writeText(val).then(function () {
+    btn.textContent = 'Copied!';
+    setTimeout(function () { btn.textContent = 'Copy Key'; }, 2500);
+  });
+}
+</script>
+{% endblock %}

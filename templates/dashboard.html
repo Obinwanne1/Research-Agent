@@ -35,22 +35,31 @@
 
 <!-- Job search input -->
 <div class="research-box card" style="margin-bottom:28px;">
-  <h2>Find Remote Jobs</h2>
+  <h2>Find Jobs Worldwide</h2>
   <form id="job-form">
-    <div class="input-row">
-      <input type="text" id="job-input" class="form-control" placeholder="e.g. Python developer, UX designer" autocomplete="off">
+    <div class="input-row" style="margin-bottom:8px;">
+      <input type="text" id="job-input" class="form-control" placeholder="e.g. Python developer, UX designer, nurse" autocomplete="off">
       <button type="submit" class="btn btn-secondary">Find Jobs</button>
+    </div>
+    <div class="input-row" style="gap:8px;">
+      <input type="text" id="job-company" class="form-control" placeholder="Company name (optional — e.g. Google, Microsoft)" autocomplete="off" style="max-width:400px;">
+      <span style="font-size:0.78rem;color:#6b7280;align-self:center;">Leave blank to search all companies globally</span>
     </div>
   </form>
 </div>
 
 <!-- Article cards -->
-<div class="page-header">
-  <h2 style="font-size:1rem;font-weight:600;">Your Research ({{ articles|length }})</h2>
+<div class="page-header" style="align-items:center;gap:12px;flex-wrap:wrap;">
+  <h2 style="font-size:1rem;font-weight:600;">Your Research (<span id="article-count">{{ articles|length }}</span>)</h2>
+  {% if articles %}
+  <div style="flex:1;min-width:180px;max-width:320px;">
+    <input type="search" id="article-search" class="form-control" placeholder="Search articles…" autocomplete="off" style="font-size:0.85rem;padding:6px 10px;">
+  </div>
+  {% endif %}
 </div>
 
 {% if articles %}
-<div class="card-grid">
+<div class="card-grid" id="article-grid">
   {% for art in articles %}
   <div class="card article-card">
     <div class="card-topic">{{ (art.topic or 'Research')[:80] }}</div>
@@ -63,8 +72,13 @@
   </div>
   {% endfor %}
 </div>
+<div id="articles-empty-search" style="display:none;" class="empty-state">
+  <div class="empty-icon">🔍</div>
+  <h3>No results</h3>
+  <p>No articles match your search.</p>
+</div>
 {% else %}
-<div class="empty-state">
+<div class="empty-state" id="articles-empty">
   <div class="empty-icon">📄</div>
   <h3>No articles yet</h3>
   <p>Enter a topic above to research your first article.</p>

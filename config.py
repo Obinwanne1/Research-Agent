@@ -8,6 +8,9 @@ class Config:
     RESEARCH_BASE_DIR = os.environ.get("RESEARCH_BASE_DIR", "research")
     MAX_CONCURRENT_JOBS = int(os.environ.get("MAX_CONCURRENT_JOBS", "10"))
     CLAUDE_TIMEOUT = int(os.environ.get("CLAUDE_TIMEOUT", "120"))
+    CLAUDE_FAST_TIMEOUT = int(os.environ.get("CLAUDE_FAST_TIMEOUT", "60"))
     PORT = int(os.environ.get("PORT", "5001"))
     DEBUG = os.environ.get("DEBUG", "true").lower() == "true"
     SESSION_LIFETIME_MINUTES = int(os.environ.get("SESSION_LIFETIME_MINUTES", "30"))
+    API_RATE_LIMIT = int(os.environ.get("API_RATE_LIMIT", "20"))  # max research/job_search calls per user per hour
+    SEARCH_CACHE_TTL_HOURS = int(os.environ.get("SEARCH_CACHE_TTL_HOURS", "6"))

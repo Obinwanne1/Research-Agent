@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Schedules — Research Agent{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Scheduled Research</h1>
+  <p class="page-subtitle">Automatically run research on a topic daily or weekly.</p>
+</div>
+
+<!-- Create form -->
+<div class="card" style="margin-bottom:2rem">
+  <h2 style="margin-top:0;font-size:1.1rem">New Schedule</h2>
+  <form method="POST" action="{{ url_for('schedules_create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:flex-end">
+      <div style="flex:1;min-width:200px">
+        <label class="form-label">Research Topic</label>
+        <input type="text" name="topic" class="form-input" placeholder="e.g. AI regulation news" maxlength="500" required>
+      </div>
+      <div>
+        <label class="form-label">Frequency</label>
+        <select name="frequency" class="form-input" style="width:auto">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+        </select>
+      </div>
+      <div>
+        <button type="submit" class="btn btn-primary">Add Schedule</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Schedule list -->
+{% if schedules %}
+<div class="card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Topic</th>
+        <th>Frequency</th>
+        <th>Status</th>
+        <th>Next Run</th>
+        <th>Last Run</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in schedules %}
+      <tr>
+        <td style="max-width:300px;word-break:break-word">{{ s.topic }}</td>
+        <td>
+          <span class="badge badge-{{ 'blue' if s.frequency == 'daily' else 'purple' }}">
+            {{ s.frequency|capitalize }}
+          </span>
+        </td>
+        <td>
+          <span class="badge badge-{{ 'green' if s.is_active else 'gray' }}">
+            {{ 'Active' if s.is_active else 'Paused' }}
+          </span>
+        </td>
+        <td>{{ s.next_run_at[:16].replace('T', ' ') if s.next_run_at else '—' }} UTC</td>
+        <td>{{ s.last_run_at[:16].replace('T', ' ') if s.last_run_at else 'Never' }}</td>
+        <td>
+          <div style="display:flex;gap:0.5rem">
+            <form method="POST" action="{{ url_for('schedules_toggle', schedule_id=s.id) }}" style="margin:0">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm {{ 'btn-secondary' if s.is_active else 'btn-primary' }}">
+                {{ 'Pause' if s.is_active else 'Resume' }}
+              </button>
+            </form>
+            <form method="POST" action="{{ url_for('schedules_delete', schedule_id=s.id) }}" style="margin:0"
+                  onsubmit="return confirm('Delete this schedule?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">⏱</div>
+  <h3>No schedules yet</h3>
+  <p>Add a topic above to start automated research.</p>
+</div>
+{% endif %}
+
+<div class="card" style="margin-top:1.5rem;background:var(--bg-subtle,#f8faf8)">
+  <h3 style="margin-top:0;font-size:0.95rem">How it works</h3>
+  <ul style="margin:0;padding-left:1.25rem;font-size:0.875rem;color:var(--text-muted,#555);line-height:1.8">
+    <li><strong>Daily</strong> — new research article generated every 24 hours</li>
+    <li><strong>Weekly</strong> — new research article generated every 7 days</li>
+    <li>Each run creates a full article in your library, just like a manual search</li>
+    <li>Paused schedules are skipped but keep their next-run date</li>
+  </ul>
+</div>
+{% endblock %}

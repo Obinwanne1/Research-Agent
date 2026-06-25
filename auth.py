@@ -2,7 +2,7 @@ import secrets
 import threading
 from datetime import datetime, timedelta, timezone
 from functools import wraps
-from flask import session, redirect, url_for, abort, request
+from flask import session, redirect, url_for, abort, request, jsonify, g
 from werkzeug.security import generate_password_hash, check_password_hash
 import models
 
@@ -49,7 +49,7 @@ def validate_csrf():
     return secrets.compare_digest(token, session_token)
 
 
-# ── Rate limiter ──────────────────────────────────────────────────────────────
+# ── Rate limiter (login) ──────────────────────────────────────────────────────
 
 _login_attempts = {}   # {identifier: [count, first_attempt, locked_until]}
 _login_lock = threading.Lock()
@@ -87,6 +87,33 @@ def record_failed_attempt(identifier):
 def clear_rate_limit(identifier):
     with _login_lock:
         _login_attempts.pop(identifier, None)
+
+
+# ── Rate limiter (API — per user, sliding window) ─────────────────────────────
+
+_api_windows = {}   # {user_id: [timestamp, ...]}
+_api_lock = threading.Lock()
+
+
+def check_api_rate_limit(user_id):
+    """Sliding window: allow Config.API_RATE_LIMIT calls per user per hour.
+    Returns (allowed, retry_after_seconds)."""
+    from config import Config
+    limit = Config.API_RATE_LIMIT
+    window = timedelta(hours=1)
+    now = datetime.now(timezone.utc)
+    with _api_lock:
+        timestamps = _api_windows.get(user_id, [])
+        # Drop timestamps older than 1 hour
+        timestamps = [t for t in timestamps if now - t < window]
+        if len(timestamps) >= limit:
+            oldest = min(timestamps)
+            retry_after = int((oldest + window - now).total_seconds()) + 1
+            _api_windows[user_id] = timestamps
+            return False, retry_after
+        timestamps.append(now)
+        _api_windows[user_id] = timestamps
+        return True, 0
 
 
 # ── Session ───────────────────────────────────────────────────────────────────
@@ -131,6 +158,42 @@ def admin_required(f):
             abort(403)
         session["role"] = user["role"]  # keep session in sync with DB
         return f(*args, **kwargs)
+    return decorated
+
+
+def _extract_api_key():
+    h = request.headers.get("X-API-Key", "").strip()
+    if h:
+        return h
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        return auth[7:].strip()
+    return None
+
+
+def api_auth_required(f):
+    """Accepts session auth OR X-API-Key / Authorization: Bearer header."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # Session auth (browser)
+        if "user_id" in session:
+            user = models.get_user_by_id(session["user_id"])
+            if not user or not user["is_active"]:
+                session.clear()
+                return jsonify({"error": "Authentication required"}), 401
+            g.user_id = user["id"]
+            return f(*args, **kwargs)
+        # API key auth
+        raw_key = _extract_api_key()
+        if raw_key:
+            result = models.verify_api_key(raw_key)
+            if result:
+                user, key_id = result
+                if user["is_active"]:
+                    g.user_id = user["id"]
+                    models.touch_api_key(key_id)
+                    return f(*args, **kwargs)
+        return jsonify({"error": "Authentication required"}), 401
     return decorated
 
 

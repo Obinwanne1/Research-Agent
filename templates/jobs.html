@@ -8,27 +8,65 @@
 
 <div class="page-header">
   <h1>Job Results</h1>
-  <p>Query: <strong>{{ job.topic }}</strong> &mdash; {{ jobs|length }} results</p>
+  <p>Query: <strong>{{ job.topic }}</strong> &mdash; {{ jobs|length }} listings found worldwide</p>
+</div>
+
+<div style="font-size:0.78rem;color:#6b7280;margin-bottom:20px;display:flex;gap:18px;flex-wrap:wrap;align-items:center;">
+  <span>Confidence: <span style="color:#16a34a;font-weight:700;">● High</span> &nbsp;<span style="color:#ca8a04;font-weight:700;">● Medium</span> &nbsp;<span style="color:#dc2626;font-weight:700;">● Low</span></span>
+  <span>Source: <span class="job-src-badge src-direct">Company Direct</span> = posted on company career page</span>
 </div>
 
 {% if jobs %}
 <div class="card-grid">
   {% for j in jobs %}
   <div class="card job-card">
+
+    {# Confidence indicator #}
+    {% if j.get('confidence', 2) == 3 %}
+      <div class="job-confidence high">● High confidence</div>
+    {% elif j.get('confidence', 2) == 1 %}
+      <div class="job-confidence low">● Low confidence</div>
+    {% else %}
+      <div class="job-confidence medium">● Medium confidence</div>
+    {% endif %}
+
     <h3>{{ j.title }}</h3>
     <div class="job-company">{{ j.company }}</div>
     <div class="job-meta">
-      {{ j.location }}
-      {% if j.salary %} &bull; {{ j.salary }}{% endif %}
+      📍 {{ j.location }}
+      {% if j.salary %} &bull; 💰 {{ j.salary }}{% endif %}
       {% if j.date %} &bull; {{ j.date }}{% endif %}
     </div>
+
+    {# Source badge #}
+    {% set src = j.get('source', 'Other') %}
+    <div style="margin:6px 0;">
+      {% if src == 'Company Direct' %}
+        <span class="job-src-badge src-direct">🏢 Company Direct</span>
+      {% elif src == 'LinkedIn' %}
+        <span class="job-src-badge src-linkedin">in LinkedIn</span>
+      {% elif src == 'Indeed' %}
+        <span class="job-src-badge src-indeed">Indeed</span>
+      {% elif src == 'Glassdoor' %}
+        <span class="job-src-badge src-glassdoor">Glassdoor</span>
+      {% elif src == 'Remote Board' %}
+        <span class="job-src-badge src-remote">🌍 Remote Board</span>
+      {% else %}
+        <span class="job-src-badge src-other">{{ src }}</span>
+      {% endif %}
+    </div>
+
     {% if j.tags %}
     <div class="job-tags">
       {% for tag in j.tags %}<span class="job-tag">{{ tag }}</span>{% endfor %}
     </div>
     {% endif %}
-    <div style="margin-top:10px;">
-      <a href="{{ j.url }}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">Apply</a>
+
+    <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <a href="{{ j.url }}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">Apply →</a>
+      {% if not j.get('url_valid', True) %}
+        <span style="font-size:0.75rem;color:#ca8a04;">⚠ Link may be expired</span>
+      {% endif %}
     </div>
   </div>
   {% endfor %}
@@ -37,7 +75,7 @@
 <div class="empty-state">
   <div class="empty-icon">💼</div>
   <h3>No jobs found</h3>
-  <p>Try a different search query.</p>
+  <p>Try a different search query or add a company name.</p>
 </div>
 {% endif %}
 {% endblock %}

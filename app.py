@@ -4,16 +4,17 @@ import json
 import secrets
 import markdown as md
 from datetime import datetime, timedelta, timezone
+import time
 from flask import (
     Flask, render_template, request, redirect,
-    url_for, session, flash, jsonify, abort
+    url_for, session, flash, jsonify, abort, send_file, g, Response, stream_with_context
 )
 from config import Config
 import models
 from auth import (
-    login_required, admin_required, hash_password, verify_password,
+    login_required, admin_required, api_auth_required, hash_password, verify_password,
     set_session, generate_csrf_token, validate_csrf, validate_password_strength,
-    check_rate_limit, record_failed_attempt, clear_rate_limit
+    check_rate_limit, record_failed_attempt, clear_rate_limit, check_api_rate_limit
 )
 from admin import admin_bp
 import background
@@ -32,6 +33,8 @@ app.jinja_env.globals['csrf_token'] = generate_csrf_token
 # Init DB on startup
 models.init_db()
 os.makedirs(Config.RESEARCH_BASE_DIR, exist_ok=True)
+background.recover_pending_jobs()
+background.start_scheduler()
 
 
 # ── Security middleware ───────────────────────────────────────────────────────
@@ -310,6 +313,23 @@ def article(slug):
     return render_template("article.html", article=art, content=html_content)
 
 
+@app.route("/article/<slug>/download.md")
+@login_required
+def article_download_md(slug):
+    art = models.get_article(slug, session["user_id"])
+    if not art:
+        abort(404)
+    file_path = os.path.join(Config.RESEARCH_BASE_DIR, art["file_path"])
+    real_base = os.path.realpath(Config.RESEARCH_BASE_DIR)
+    real_path = os.path.realpath(file_path)
+    if not real_path.startswith(real_base + os.sep):
+        abort(403)
+    if not os.path.exists(real_path):
+        abort(404)
+    filename = os.path.basename(real_path)
+    return send_file(real_path, as_attachment=True, download_name=filename, mimetype="text/markdown; charset=utf-8")
+
+
 @app.route("/jobs/results/<int:job_id>")
 @login_required
 def job_results(job_id):
@@ -331,35 +351,48 @@ _MAX_INPUT = 500
 
 
 @app.route("/api/research", methods=["POST"])
-@login_required
+@api_auth_required
 def api_research():
+    allowed, retry_after = check_api_rate_limit(g.user_id)
+    if not allowed:
+        resp = jsonify({"error": f"Rate limit exceeded. Try again in {retry_after}s."})
+        resp.headers["Retry-After"] = str(retry_after)
+        return resp, 429
     data = request.get_json(silent=True) or {}
     topic = (data.get("topic") or "").strip()
     if not topic:
         return jsonify({"error": "topic is required"}), 400
     if len(topic) > _MAX_INPUT:
         return jsonify({"error": f"topic must be {_MAX_INPUT} characters or fewer"}), 400
-    job_id = background.enqueue("research", {"topic": topic}, session["user_id"])
+    job_id = background.enqueue("research", {"topic": topic}, g.user_id)
     return jsonify({"job_id": job_id})
 
 
 @app.route("/api/jobs/search", methods=["POST"])
-@login_required
+@api_auth_required
 def api_job_search():
+    allowed, retry_after = check_api_rate_limit(g.user_id)
+    if not allowed:
+        resp = jsonify({"error": f"Rate limit exceeded. Try again in {retry_after}s."})
+        resp.headers["Retry-After"] = str(retry_after)
+        return resp, 429
     data = request.get_json(silent=True) or {}
     query = (data.get("query") or "").strip()
+    company = (data.get("company") or "").strip()
     if not query:
         return jsonify({"error": "query is required"}), 400
     if len(query) > _MAX_INPUT:
         return jsonify({"error": f"query must be {_MAX_INPUT} characters or fewer"}), 400
-    job_id = background.enqueue("job_search", {"query": query, "topic": query}, session["user_id"])
+    if len(company) > 100:
+        return jsonify({"error": "company name must be 100 characters or fewer"}), 400
+    job_id = background.enqueue("job_search", {"query": query, "topic": query, "company": company}, g.user_id)
     return jsonify({"job_id": job_id})
 
 
 @app.route("/api/status/<int:job_id>")
-@login_required
+@api_auth_required
 def api_status(job_id):
-    job = models.get_job(job_id, session["user_id"])
+    job = models.get_job(job_id, g.user_id)
     if not job:
         return jsonify({"error": "not found"}), 404
     result_data = None
@@ -378,8 +411,48 @@ def api_status(job_id):
     })
 
 
-@app.route("/api/generate/prompt", methods=["POST"])
+@app.route("/api/stream/<int:job_id>")
 @login_required
+def api_stream(job_id):
+    user_id = session["user_id"]
+
+    def generate():
+        while True:
+            try:
+                job = models.get_job(job_id, user_id)
+                if not job:
+                    yield f"data: {json.dumps({'error': 'not found'})}\n\n"
+                    break
+                result_data = None
+                if job["result_data"]:
+                    try:
+                        result_data = json.loads(job["result_data"])
+                    except Exception:
+                        pass
+                payload = json.dumps({
+                    "status":      job["status"],
+                    "message":     job["message"],
+                    "slug":        job["result_slug"],
+                    "job_type":    job["job_type"],
+                    "result_data": result_data,
+                    "job_id":      job_id,
+                })
+                yield f"data: {payload}\n\n"
+                if job["status"] in ("done", "error"):
+                    break
+                time.sleep(1)
+            except GeneratorExit:
+                break
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.route("/api/generate/prompt", methods=["POST"])
+@api_auth_required
 def api_generate_prompt():
     data = request.get_json(silent=True) or {}
     description = (data.get("description") or "").strip()
@@ -387,12 +460,12 @@ def api_generate_prompt():
         return jsonify({"error": "description is required"}), 400
     if len(description) > _MAX_INPUT:
         return jsonify({"error": f"description must be {_MAX_INPUT} characters or fewer"}), 400
-    job_id = background.enqueue("prompt_gen", {"topic": description}, session["user_id"])
+    job_id = background.enqueue("prompt_gen", {"topic": description}, g.user_id)
     return jsonify({"job_id": job_id})
 
 
 @app.route("/api/generate/skill", methods=["POST"])
-@login_required
+@api_auth_required
 def api_generate_skill():
     data = request.get_json(silent=True) or {}
     description = (data.get("description") or "").strip()
@@ -400,15 +473,162 @@ def api_generate_skill():
         return jsonify({"error": "description is required"}), 400
     if len(description) > _MAX_INPUT:
         return jsonify({"error": f"description must be {_MAX_INPUT} characters or fewer"}), 400
-    job_id = background.enqueue("skill_gen", {"topic": description}, session["user_id"])
+    job_id = background.enqueue("skill_gen", {"topic": description}, g.user_id)
     return jsonify({"job_id": job_id})
 
 
 @app.route("/api/articles")
-@login_required
+@api_auth_required
 def api_articles():
-    articles = models.get_articles_for_user(session["user_id"])
-    return jsonify(articles)
+    return jsonify(models.get_articles_for_user(g.user_id))
+
+
+@app.route("/api/search/articles")
+@api_auth_required
+def api_search_articles():
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify(models.get_articles_for_user(g.user_id))
+    try:
+        results = models.search_articles(g.user_id, q)
+    except Exception:
+        results = []
+    return jsonify(results)
+
+
+# ── API key settings ──────────────────────────────────────────────────────────
+
+@app.route("/settings/api-keys")
+@login_required
+def settings_api_keys():
+    keys = models.get_api_keys_for_user(session["user_id"])
+    new_key = session.pop("_pending_api_key", None)
+    return render_template("settings/api_keys.html", keys=keys, new_key=new_key)
+
+
+@app.route("/settings/api-keys", methods=["POST"])
+@login_required
+def settings_api_keys_create():
+    if not validate_csrf():
+        flash("Invalid request.", "error")
+        return redirect(url_for("settings_api_keys"))
+    name = (request.form.get("name") or "").strip()[:80] or "My Key"
+    raw_key = "ra_" + secrets.token_hex(32)
+    models.create_api_key(session["user_id"], name, raw_key)
+    session["_pending_api_key"] = raw_key
+    flash("API key created. Copy it now — it won't be shown again.", "success")
+    return redirect(url_for("settings_api_keys"))
+
+
+@app.route("/settings/api-keys/<int:key_id>/revoke", methods=["POST"])
+@login_required
+def settings_api_keys_revoke(key_id):
+    if not validate_csrf():
+        flash("Invalid request.", "error")
+        return redirect(url_for("settings_api_keys"))
+    models.revoke_api_key(key_id, session["user_id"])
+    flash("API key revoked.", "success")
+    return redirect(url_for("settings_api_keys"))
+
+
+# ── Public sharing ────────────────────────────────────────────────────────────
+
+@app.route("/article/<slug>/share", methods=["POST"])
+@login_required
+def article_share_toggle(slug):
+    if not validate_csrf():
+        flash("Invalid request.", "error")
+        return redirect(url_for("article", slug=slug))
+    art = models.get_article(slug, session["user_id"])
+    if not art:
+        abort(404)
+    make_public = not bool(art.get("is_public"))
+    models.set_article_share(slug, session["user_id"], make_public)
+    if make_public:
+        flash("Article is now public. Anyone with the link can view it.", "success")
+    else:
+        flash("Article is now private.", "success")
+    return redirect(url_for("article", slug=slug))
+
+
+@app.route("/share/<token>")
+def article_public(token):
+    art = models.get_article_by_token(token)
+    if not art:
+        abort(404)
+    file_path = os.path.join(Config.RESEARCH_BASE_DIR, art["file_path"])
+    real_base = os.path.realpath(Config.RESEARCH_BASE_DIR)
+    real_path = os.path.realpath(file_path)
+    if not real_path.startswith(real_base + os.sep):
+        abort(403)
+    if not os.path.exists(real_path):
+        abort(404)
+    with open(real_path, "r", encoding="utf-8") as f:
+        raw = f.read()
+    html_content = md.markdown(raw, extensions=["fenced_code", "tables"])
+    html_content = re.sub(
+        r'((?:^|(?<=[\s(>]))(https?://[^\s<>"\')\]]+))',
+        r'<a href="\2" target="_blank" rel="noopener noreferrer">\2</a>',
+        html_content
+    )
+    return render_template("share.html", article=art, content=html_content)
+
+
+# ── Schedule routes ───────────────────────────────────────────────────────────
+
+_VALID_FREQUENCIES = {"daily", "weekly"}
+
+
+@app.route("/schedules")
+@login_required
+def schedules():
+    user_schedules = models.get_schedules_for_user(session["user_id"])
+    return render_template("schedules/index.html", schedules=user_schedules)
+
+
+@app.route("/schedules", methods=["POST"])
+@login_required
+def schedules_create():
+    if not validate_csrf():
+        flash("Invalid request.", "error")
+        return redirect(url_for("schedules"))
+    topic = (request.form.get("topic") or "").strip()
+    frequency = (request.form.get("frequency") or "daily").strip()
+    if not topic:
+        flash("Topic is required.", "error")
+        return redirect(url_for("schedules"))
+    if len(topic) > _MAX_INPUT:
+        flash(f"Topic must be {_MAX_INPUT} characters or fewer.", "error")
+        return redirect(url_for("schedules"))
+    if frequency not in _VALID_FREQUENCIES:
+        frequency = "daily"
+    next_run_at = (datetime.now(timezone.utc) + timedelta(
+        days=1 if frequency == "daily" else 7
+    )).isoformat()
+    models.create_schedule(session["user_id"], topic, frequency, next_run_at)
+    flash(f'Schedule created. First run in {"24 hours" if frequency == "daily" else "7 days"}.', "success")
+    return redirect(url_for("schedules"))
+
+
+@app.route("/schedules/<int:schedule_id>/toggle", methods=["POST"])
+@login_required
+def schedules_toggle(schedule_id):
+    if not validate_csrf():
+        flash("Invalid request.", "error")
+        return redirect(url_for("schedules"))
+    models.toggle_schedule(schedule_id, session["user_id"])
+    return redirect(url_for("schedules"))
+
+
+@app.route("/schedules/<int:schedule_id>/delete", methods=["POST"])
+@login_required
+def schedules_delete(schedule_id):
+    if not validate_csrf():
+        flash("Invalid request.", "error")
+        return redirect(url_for("schedules"))
+    models.delete_schedule(schedule_id, session["user_id"])
+    flash("Schedule deleted.", "success")
+    return redirect(url_for("schedules"))
 
 
 # ── Error handlers ────────────────────────────────────────────────────────────
