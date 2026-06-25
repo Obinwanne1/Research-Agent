@@ -56,6 +56,15 @@ def fetch_pages(search_results, max_pages=2):
 
 # ── Claude CLI wrapper ────────────────────────────────────────────────────────
 
+def _claude_env():
+    """Return os.environ copy with npm global bin injected so claude.cmd resolves."""
+    env = os.environ.copy()
+    npm_bin = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "npm")
+    if npm_bin not in env.get("PATH", ""):
+        env["PATH"] = npm_bin + os.pathsep + env.get("PATH", "")
+    return env
+
+
 def call_claude(prompt):
     result = subprocess.run(
         ["claude", "-p"],
@@ -63,7 +72,8 @@ def call_claude(prompt):
         capture_output=True,
         text=True,
         encoding="utf-8",
-        timeout=Config.CLAUDE_TIMEOUT
+        timeout=Config.CLAUDE_TIMEOUT,
+        env=_claude_env(),
     )
     if result.returncode != 0:
         raise RuntimeError(f"Claude CLI error: {result.stderr[:300]}")
