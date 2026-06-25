@@ -1,6 +1,6 @@
 import secrets
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import session, redirect, url_for, abort, request
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -60,7 +60,7 @@ LOCKOUT_MINUTES = 15
 def check_rate_limit(identifier):
     """Returns (allowed, retry_after_seconds)."""
     with _login_lock:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if identifier not in _login_attempts:
             return True, 0
         count, first_attempt, locked_until = _login_attempts[identifier]
@@ -74,7 +74,7 @@ def check_rate_limit(identifier):
 
 def record_failed_attempt(identifier):
     with _login_lock:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if identifier not in _login_attempts:
             _login_attempts[identifier] = [1, now, None]
         else:
@@ -97,7 +97,7 @@ def set_session(user):
     session["role"] = user["role"]
     session["display_name"] = user.get("display_name") or user["email"].split("@")[0]
     session["must_change_password"] = bool(user.get("must_change_password", 0))
-    session["last_activity"] = datetime.utcnow().isoformat()
+    session["last_activity"] = datetime.now(timezone.utc).isoformat()
 
 
 # ── Access decorators ─────────────────────────────────────────────────────────

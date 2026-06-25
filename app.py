@@ -3,7 +3,7 @@ import re
 import json
 import secrets
 import markdown as md
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import (
     Flask, render_template, request, redirect,
     url_for, session, flash, jsonify, abort
@@ -41,11 +41,11 @@ def session_timeout():
     if "user_id" in session:
         last = session.get("last_activity")
         if last:
-            elapsed = datetime.utcnow() - datetime.fromisoformat(last)
+            elapsed = datetime.now(timezone.utc) - datetime.fromisoformat(last)
             if elapsed > timedelta(minutes=Config.SESSION_LIFETIME_MINUTES):
                 session.clear()
                 return redirect(url_for("login"))
-        session["last_activity"] = datetime.utcnow().isoformat()
+        session["last_activity"] = datetime.now(timezone.utc).isoformat()
         session.permanent = True
 
 
@@ -227,7 +227,7 @@ def forgot_password():
         user = models.get_user_by_email(email)
         if user and user["is_active"]:
             token = secrets.token_urlsafe(32)
-            expires_at = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+            expires_at = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
             models.create_reset_token(user["id"], token, expires_at)
             token_link = url_for("reset_password", token=token, _external=True)
         record_failed_attempt(f"forgot:{ip}")
@@ -247,7 +247,7 @@ def reset_password(token):
 
     # Check expiry
     expires_at = datetime.fromisoformat(token_row["expires_at"])
-    if datetime.utcnow() > expires_at:
+    if datetime.now(timezone.utc) > expires_at:
         return render_template("auth/reset_password.html", invalid=True, error="Reset link has expired.")
 
     if request.method == "POST":
