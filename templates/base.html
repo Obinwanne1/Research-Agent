@@ -1,3 +1,4 @@
+{% from 'macros/icons.html' import icon %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,32 +19,32 @@
     <div class="sidebar-nav">
       <span class="sidebar-section-label">Research</span>
       <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' else '' }}">
-        <span class="nav-icon">⊞</span> Dashboard
+        <span class="nav-icon">{{ icon('grid') }}</span> Dashboard
       </a>
 
       <a href="{{ url_for('schedules') }}" class="{{ 'active' if request.endpoint == 'schedules' else '' }}">
-        <span class="nav-icon">⏱</span> Schedules
+        <span class="nav-icon">{{ icon('clock') }}</span> Schedules
       </a>
 
       <span class="sidebar-section-label">Account</span>
       <a href="{{ url_for('settings_api_keys') }}" class="{{ 'active' if request.endpoint and 'api_keys' in request.endpoint else '' }}">
-        <span class="nav-icon">🔑</span> API Keys
+        <span class="nav-icon">{{ icon('key') }}</span> API Keys
       </a>
       {% if session.get('role') in ('admin', 'superadmin') %}
       <a href="{{ url_for('admin.index') }}" class="{{ 'active' if request.blueprint == 'admin' else '' }}">
-        <span class="nav-icon">⚙</span> Admin
+        <span class="nav-icon">{{ icon('settings') }}</span> Admin
       </a>
       {% endif %}
       <form method="POST" action="{{ url_for('logout') }}" style="margin:0">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="logout-nav-btn">
-          <span class="nav-icon">⇥</span> Logout
+          <span class="nav-icon">{{ icon('log-out') }}</span> Logout
         </button>
       </form>
     </div>
     <div class="sidebar-footer">
       <div class="user-email">{{ session.get('email', '') }}</div>
-      <button id="theme-toggle" class="theme-toggle">☾ Dark</button>
+      <button id="theme-toggle" class="theme-toggle">Dark</button>
     </div>
   </nav>
 

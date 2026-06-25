@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/icons.html' import icon %}
 {% block title %}API Keys — Research Agent{% endblock %}
 
 {% block content %}
@@ -73,7 +74,7 @@
 </div>
 {% else %}
 <div class="empty-state">
-  <div class="empty-icon">🔑</div>
+  <div class="empty-icon">{{ icon('key', 40) }}</div>
   <h3>No API keys yet</h3>
   <p>Generate a key above to start using the API.</p>
 </div>

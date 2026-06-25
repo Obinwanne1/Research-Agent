@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/icons.html' import icon %}
 {% block title %}Schedules — Research Agent{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -82,7 +83,7 @@
 </div>
 {% else %}
 <div class="empty-state">
-  <div class="empty-icon">⏱</div>
+  <div class="empty-icon">{{ icon('clock', 40) }}</div>
   <h3>No schedules yet</h3>
   <p>Add a topic above to start automated research.</p>
 </div>

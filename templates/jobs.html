@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/icons.html' import icon %}
 {% block title %}Job Results — Research Agent{% endblock %}
 
 {% block content %}
@@ -33,8 +34,8 @@
     <h3>{{ j.title }}</h3>
     <div class="job-company">{{ j.company }}</div>
     <div class="job-meta">
-      📍 {{ j.location }}
-      {% if j.salary %} &bull; 💰 {{ j.salary }}{% endif %}
+      {{ icon('map-pin', 13) }} {{ j.location }}
+      {% if j.salary %} &bull; {{ icon('dollar-sign', 13) }} {{ j.salary }}{% endif %}
       {% if j.date %} &bull; {{ j.date }}{% endif %}
     </div>
 
@@ -42,7 +43,7 @@
     {% set src = j.get('source', 'Other') %}
     <div style="margin:6px 0;">
       {% if src == 'Company Direct' %}
-        <span class="job-src-badge src-direct">🏢 Company Direct</span>
+        <span class="job-src-badge src-direct">{{ icon('building', 13) }} Company Direct</span>
       {% elif src == 'LinkedIn' %}
         <span class="job-src-badge src-linkedin">in LinkedIn</span>
       {% elif src == 'Indeed' %}
@@ -50,7 +51,7 @@
       {% elif src == 'Glassdoor' %}
         <span class="job-src-badge src-glassdoor">Glassdoor</span>
       {% elif src == 'Remote Board' %}
-        <span class="job-src-badge src-remote">🌍 Remote Board</span>
+        <span class="job-src-badge src-remote">{{ icon('globe', 13) }} Remote Board</span>
       {% else %}
         <span class="job-src-badge src-other">{{ src }}</span>
       {% endif %}
@@ -65,7 +66,7 @@
     <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <a href="{{ j.url }}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">Apply →</a>
       {% if not j.get('url_valid', True) %}
-        <span style="font-size:0.75rem;color:#ca8a04;">⚠ Link may be expired</span>
+        <span style="font-size:0.75rem;color:#ca8a04;display:inline-flex;align-items:center;gap:3px;">{{ icon('alert-triangle', 13) }} Link may be expired</span>
       {% endif %}
     </div>
   </div>
@@ -73,7 +74,7 @@
 </div>
 {% else %}
 <div class="empty-state">
-  <div class="empty-icon">💼</div>
+  <div class="empty-icon">{{ icon('briefcase', 40) }}</div>
   <h3>No jobs found</h3>
   <p>Try a different search query or add a company name.</p>
 </div>
