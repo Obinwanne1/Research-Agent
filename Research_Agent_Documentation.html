@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Research Agent — Complete System Documentation</title>
+<style>
+  @page { size: A4; margin: 20mm 18mm 22mm 18mm; }
+  @media print {
+    .no-print { display: none; }
+    .page-break { page-break-before: always; break-before: page; }
+    body { font-size: 11pt; }
+    h1 { font-size: 22pt; }
+    h2 { font-size: 15pt; }
+    h3 { font-size: 12pt; }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #1a1a1a;
+    background: #fff;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 32px 40px 60px;
+  }
+
+  /* Cover */
+  .cover {
+    min-height: 96vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    border-bottom: 4px solid #16a34a;
+    padding-bottom: 40px;
+    margin-bottom: 48px;
+  }
+  .cover-badge {
+    background: #16a34a; color: #fff;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    padding: 5px 14px; border-radius: 4px;
+    margin-bottom: 24px; display: inline-block;
+  }
+  .cover h1 { font-size: 42px; font-weight: 900; color: #14532d; line-height: 1.15; margin-bottom: 16px; }
+  .cover-subtitle { font-size: 18px; color: #374151; max-width: 540px; margin-bottom: 40px; line-height: 1.5; }
+  .cover-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; width: 100%; max-width: 600px; margin-bottom: 48px; }
+  .cover-meta-item label { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; margin-bottom: 4px; }
+  .cover-meta-item span { font-size: 14px; font-weight: 700; color: #1a1a1a; }
+  .cover-tagline { font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 20px; width: 100%; }
+
+  /* Navigation */
+  .toc { background: #f8faf8; border: 1px solid #dcfce7; border-radius: 8px; padding: 24px 28px; margin-bottom: 48px; }
+  .toc h2 { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #16a34a; margin-bottom: 16px; border: none; padding: 0; }
+  .toc ol { padding-left: 20px; }
+  .toc li { font-size: 12.5px; color: #374151; margin-bottom: 5px; }
+  .toc li a { color: #15803d; text-decoration: none; }
+  .toc li a:hover { text-decoration: underline; }
+
+  /* Section labels */
+  .sec-label {
+    font-size: 10px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 2.5px;
+    color: #16a34a; margin-bottom: 6px; display: block;
+  }
+
+  /* Headings */
+  h2 {
+    font-size: 20px; font-weight: 800;
+    color: #14532d; margin: 52px 0 14px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #dcfce7;
+    page-break-after: avoid; break-after: avoid;
+  }
+  h3 { font-size: 14px; font-weight: 700; color: #15803d; margin: 32px 0 10px; page-break-after: avoid; break-after: avoid; }
+  h4 { font-size: 13px; font-weight: 700; color: #374151; margin: 22px 0 7px; page-break-after: avoid; break-after: avoid; }
+  h2 + p, h2 + ul, h2 + ol, h2 + table, h2 + pre, h2 + .callout,
+  h3 + p, h3 + ul, h3 + ol, h3 + table, h3 + pre, h3 + .callout,
+  h4 + p, h4 + ul, h4 + ol { page-break-before: avoid; break-before: avoid; }
+
+  /* Body */
+  p  { margin-bottom: 14px; color: #374151; }
+  ul, ol { padding-left: 22px; margin-bottom: 16px; }
+  li { margin-bottom: 6px; color: #374151; }
+  strong { color: #111; }
+
+  /* Callouts */
+  .callout { border-radius: 6px; padding: 14px 18px; margin: 20px 0; font-size: 12.5px; }
+  .note   { background: #f0fdf4; border-left: 4px solid #16a34a; color: #14532d; }
+  .warn   { background: #fefce8; border-left: 4px solid #ca8a04; color: #713f12; }
+  .danger { background: #fef2f2; border-left: 4px solid #dc2626; color: #7f1d1d; }
+  .info   { background: #eff6ff; border-left: 4px solid #3b82f6; color: #1e40af; }
+  .callout strong { display: block; margin-bottom: 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 16px 0 24px; }
+  th { background: #14532d; color: #fff; padding: 10px 13px; text-align: left; font-weight: 700; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px; }
+  td { padding: 9px 13px; border-bottom: 1px solid #e5e7eb; color: #374151; vertical-align: top; }
+  tr:nth-child(even) td { background: #f9fafb; }
+
+  /* Code */
+  code { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; padding: 1px 6px; font-family: 'Consolas', 'Courier New', monospace; font-size: 11px; color: #0f172a; }
+  pre { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 18px 20px; font-size: 11px; margin: 16px 0; line-height: 1.7; font-family: 'Consolas', 'Courier New', monospace; overflow-x: auto; }
+  pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+
+  /* Steps */
+  .steps { counter-reset: s; list-style: none; padding: 0; }
+  .steps li { counter-increment: s; display: flex; gap: 16px; margin-bottom: 14px; align-items: flex-start; }
+  .steps li::before { content: counter(s); background: #16a34a; color: #fff; font-weight: 800; font-size: 11px; min-width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+
+  /* Badges */
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .badge-green  { background: #dcfce7; color: #14532d; }
+  .badge-blue   { background: #dbeafe; color: #1e40af; }
+  .badge-purple { background: #ede9fe; color: #5b21b6; }
+  .badge-gray   { background: #f3f4f6; color: #374151; }
+  .badge-red    { background: #fee2e2; color: #991b1b; }
+  .badge-yellow { background: #fef9c3; color: #713f12; }
+
+  /* Two column */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 16px 0 24px; }
+  .col-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px 20px; }
+  .col-card h4 { margin-top: 0; color: #14532d; }
+
+  /* Flow diagram */
+  .flow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 18px 0; }
+  .flow-step { background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 8px 14px; font-size: 12px; font-weight: 600; color: #14532d; white-space: nowrap; }
+  .flow-arrow { color: #16a34a; font-size: 16px; font-weight: 700; }
+
+  /* Divider */
+  hr.divider { border: none; border-top: 1px solid #e5e7eb; margin: 48px 0; }
+
+  /* Print button */
+  .no-print { text-align: center; padding: 20px 0 32px; }
+  .print-btn { background: #16a34a; color: #fff; border: none; padding: 10px 28px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .print-btn:hover { background: #15803d; }
+
+  /* File tree */
+  .file-tree { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 20px 24px; font-family: 'Consolas', monospace; font-size: 11.5px; line-height: 1.9; margin: 16px 0; }
+  .file-tree .comment { color: #94a3b8; }
+  .file-tree .dir { color: #7dd3fc; }
+  .file-tree .file { color: #86efac; }
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+</div>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-badge">Technical Documentation — v2.0</div>
+  <h1>Research Agent<br>Complete System Documentation</h1>
+  <div class="cover-subtitle">
+    Architecture, API reference, database schema, security model, and deployment guide for the Research Agent AI automation platform.
+  </div>
+  <div class="cover-meta">
+    <div class="cover-meta-item">
+      <label>Version</label>
+      <span>2.0 — Scale-Up</span>
+    </div>
+    <div class="cover-meta-item">
+      <label>Stack</label>
+      <span>Python 3.10+ / Flask / SQLite</span>
+    </div>
+    <div class="cover-meta-item">
+      <label>Updated</label>
+      <span>June 2026</span>
+    </div>
+    <div class="cover-meta-item">
+      <label>Default Port</label>
+      <span>5001</span>
+    </div>
+    <div class="cover-meta-item">
+      <label>AI Engine</label>
+      <span>Claude Code CLI + SDK</span>
+    </div>
+    <div class="cover-meta-item">
+      <label>DB</label>
+      <span>SQLite (8 tables, FTS5)</span>
+    </div>
+  </div>
+  <div class="cover-tagline">SCYKELTD AI Consultancy · Research Agent · June 2026</div>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#overview">System Overview</a></li>
+    <li><a href="#setup">Setup &amp; Configuration</a></li>
+    <li><a href="#architecture">Architecture &amp; File Structure</a></li>
+    <li><a href="#database">Database Schema</a></li>
+    <li><a href="#pipeline">Research Pipeline</a></li>
+    <li><a href="#claude">Claude Integration</a></li>
+    <li><a href="#jobs">Background Jobs &amp; Scheduler</a></li>
+    <li><a href="#api">REST API Reference</a></li>
+    <li><a href="#auth">Authentication &amp; Security</a></li>
+    <li><a href="#features">Feature Reference</a></li>
+    <li><a href="#admin">Admin Panel</a></li>
+    <li><a href="#ui">UI &amp; Frontend</a></li>
+    <li><a href="#errors">Error Reference &amp; Troubleshooting</a></li>
+    <li><a href="#deploy">Deployment Guide</a></li>
+  </ol>
+</div>
+
+<!-- SECTION 1 -->
+<span class="sec-label" id="overview">Section 01</span>
+<h2>System Overview</h2>
+
+<p>Research Agent is a full-stack, self-hosted AI research automation platform. It converts any research topic into a structured, sourced markdown summary in under 90 seconds — using DuckDuckGo for web discovery and Claude (via CLI subprocess or SDK) for AI synthesis.</p>
+
+<h3>What the system does</h3>
+<ul>
+  <li><strong>Research</strong> — Topic → search → fetch → Claude → 600–1000 word summary with verified sources</li>
+  <li><strong>Job Search</strong> — Role + location → DuckDuckGo → Claude JSON extraction → structured cards</li>
+  <li><strong>Prompt Generator</strong> — Description → optimised AI prompt with token estimate + GPT-4 comparison</li>
+  <li><strong>Skill Generator</strong> — Workflow description → Claude Code <code>.md</code> skill file with triggers + steps</li>
+  <li><strong>Scheduled Research</strong> — Daily/weekly recurring jobs, daemon scheduler, DB-backed</li>
+  <li><strong>Article Comparison</strong> — Up to 4 articles side-by-side, Claude synthesis</li>
+  <li><strong>Public Sharing</strong> — Unique token link, no login required for reader</li>
+  <li><strong>REST API</strong> — API key auth, rate limited, works with n8n, Zapier, scripts</li>
+  <li><strong>Admin Panel</strong> — User management, job monitor, stats dashboard</li>
+</ul>
+
+<h3>Technology stack</h3>
+<table>
+  <thead><tr><th>Layer</th><th>Technology</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td>Web framework</td><td>Flask 3.1+</td><td>Lightweight, minimal overhead, full control</td></tr>
+    <tr><td>Database</td><td>SQLite (via stdlib <code>sqlite3</code>)</td><td>Zero setup, file-based, sufficient for personal/team scale</td></tr>
+    <tr><td>Full-text search</td><td>SQLite FTS5</td><td>Built-in, no extra service</td></tr>
+    <tr><td>AI engine</td><td>Claude Code CLI (<code>claude -p</code>)</td><td>Reuses existing Pro subscription — no API billing</td></tr>
+    <tr><td>AI fallback</td><td>anthropic Python SDK</td><td>Resilience when CLI subprocess fails</td></tr>
+    <tr><td>Web search</td><td>ddgs (DuckDuckGo)</td><td>No API key, no rate-limit account</td></tr>
+    <tr><td>Password hashing</td><td>werkzeug PBKDF2-HMAC-SHA256</td><td>Industry standard, built into werkzeug</td></tr>
+    <tr><td>Production server</td><td>Waitress</td><td>WSGI, Windows-compatible, no Gunicorn needed</td></tr>
+    <tr><td>Concurrency</td><td>ThreadPoolExecutor</td><td>Bounded thread pool, bounded Claude call concurrency</td></tr>
+  </tbody>
+</table>
+
+<!-- SECTION 2 -->
+<hr class="divider">
+<span class="sec-label" id="setup">Section 02</span>
+<h2>Setup &amp; Configuration</h2>
+
+<h3>Prerequisites</h3>
+<table>
+  <thead><tr><th>Tool</th><th>Version</th><th>Install</th></tr></thead>
+  <tbody>
+    <tr><td>Python</td><td>3.10+</td><td><a href="https://python.org">python.org</a> — tick "Add to PATH"</td></tr>
+    <tr><td>Node.js</td><td>LTS</td><td><a href="https://nodejs.org">nodejs.org</a> — required for Claude CLI</td></tr>
+    <tr><td>Claude Code CLI</td><td>Latest</td><td><code>npm install -g @anthropic-ai/claude-code</code></td></tr>
+  </tbody>
+</table>
+
+<h3>Install &amp; launch</h3>
+<pre>pip install -r requirements.txt
+python app.py
+# → Serving on http://0.0.0.0:5001</pre>
+
+<h3>Environment variables (.env)</h3>
+<table>
+  <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>SECRET_KEY</code></td><td><em>hardcoded dev value</em></td><td>Flask session signing key — change in production</td></tr>
+    <tr><td><code>DATABASE_PATH</code></td><td><code>research_agent.db</code></td><td>SQLite file path</td></tr>
+    <tr><td><code>RESEARCH_BASE_DIR</code></td><td><code>research</code></td><td>Root folder for .md article files</td></tr>
+    <tr><td><code>MAX_CONCURRENT_JOBS</code></td><td><code>10</code></td><td>ThreadPoolExecutor max workers</td></tr>
+    <tr><td><code>CLAUDE_TIMEOUT</code></td><td><code>120</code></td><td>Research summarisation timeout (seconds)</td></tr>
+    <tr><td><code>CLAUDE_FAST_TIMEOUT</code></td><td><code>60</code></td><td>Prompt/skill gen timeout (seconds)</td></tr>
+    <tr><td><code>PORT</code></td><td><code>5001</code></td><td>HTTP listen port</td></tr>
+    <tr><td><code>DEBUG</code></td><td><code>true</code></td><td>Set <code>false</code> in production</td></tr>
+    <tr><td><code>SESSION_LIFETIME_MINUTES</code></td><td><code>30</code></td><td>Inactivity session timeout</td></tr>
+    <tr><td><code>API_RATE_LIMIT</code></td><td><code>20</code></td><td>Max API calls per user per hour</td></tr>
+    <tr><td><code>SEARCH_CACHE_TTL_HOURS</code></td><td><code>6</code></td><td>DuckDuckGo cache time-to-live</td></tr>
+    <tr><td><code>ANTHROPIC_API_KEY</code></td><td><em>unset</em></td><td>Optional — enables SDK fallback when CLI fails</td></tr>
+  </tbody>
+</table>
+
+<!-- SECTION 3 -->
+<hr class="divider">
+<span class="sec-label" id="architecture">Section 03</span>
+<h2>Architecture &amp; File Structure</h2>
+
+<div class="file-tree">
+<span class="dir">ResearchAgent/</span>
+├── <span class="file">app.py</span>              <span class="comment">← Entry point. All URL routes, middleware, error handlers</span>
+├── <span class="file">auth.py</span>             <span class="comment">← Decorators, CSRF, login/API rate limiting, session helpers</span>
+├── <span class="file">admin.py</span>            <span class="comment">← Admin Blueprint (/admin/*)</span>
+├── <span class="file">background.py</span>       <span class="comment">← ThreadPoolExecutor queue + daemon scheduler thread</span>
+├── <span class="file">config.py</span>           <span class="comment">← Config class — reads all settings from .env</span>
+├── <span class="file">models.py</span>           <span class="comment">← SQLite layer — 8 tables, all CRUD helpers</span>
+├── <span class="file">research_agent.py</span>   <span class="comment">← Research pipeline (search → cache → fetch → Claude → save)</span>
+├── <span class="file">job_scraper.py</span>      <span class="comment">← Job search pipeline</span>
+├── <span class="file">prompt_generator.py</span> <span class="comment">← Prompt &amp; skill generators</span>
+├── <span class="file">utils.py</span>            <span class="comment">← Claude subprocess + SDK fallback (single entry point)</span>
+├── <span class="file">requirements.txt</span>
+├── <span class="file">.env</span>                <span class="comment">← Create manually. Never commit.</span>
+│
+├── <span class="dir">static/</span>
+│   ├── <span class="file">css/main.css</span>    <span class="comment">← Green/white brand, dark mode, sidebar, compare</span>
+│   └── <span class="file">js/main.js</span>      <span class="comment">← Theme, spinner, polling, compare checkboxes, share</span>
+│
+└── <span class="dir">templates/</span>
+    ├── <span class="file">base.html</span>           <span class="comment">← Sidebar (rounded nav, HR dividers), spinner, flash</span>
+    ├── <span class="file">index.html</span>          <span class="comment">← Public landing page</span>
+    ├── <span class="file">dashboard.html</span>      <span class="comment">← Article grid, FTS search, compare checkboxes, forms</span>
+    ├── <span class="file">article.html</span>        <span class="comment">← Article view, share toggle, download, delete</span>
+    ├── <span class="file">compare.html</span>        <span class="comment">← Side-by-side CSS grid + synthesis panel</span>
+    ├── <span class="file">share.html</span>          <span class="comment">← Standalone public view (no auth, no sidebar)</span>
+    ├── <span class="file">jobs.html</span>           <span class="comment">← Job results cards</span>
+    ├── <span class="dir">auth/</span>               <span class="comment">← login, register, change_password, forgot, reset</span>
+    ├── <span class="dir">settings/</span>           <span class="comment">← api_keys.html</span>
+    ├── <span class="dir">schedules/</span>          <span class="comment">← index.html</span>
+    ├── <span class="dir">admin/</span>              <span class="comment">← index, users, user_detail, jobs</span>
+    └── <span class="dir">errors/</span>             <span class="comment">← 403, 404</span>
+</div>
+
+<h3>Startup sequence (app.py)</h3>
+<ol class="steps">
+  <li><code>models.init_db()</code> — create all tables, run migrations, backfill FTS5, promote superadmin</li>
+  <li><code>os.makedirs(RESEARCH_BASE_DIR)</code> — ensure research folder exists</li>
+  <li><code>background.recover_pending_jobs()</code> — reset stuck jobs, requeue pending ones</li>
+  <li><code>background.start_scheduler()</code> — launch daemon scheduler thread</li>
+  <li><code>waitress.serve(app, host="0.0.0.0", port=PORT)</code></li>
+</ol>
+
+<!-- SECTION 4 -->
+<hr class="divider">
+<span class="sec-label" id="database">Section 04</span>
+<h2>Database Schema</h2>
+
+<p>Single SQLite file (<code>research_agent.db</code>). Auto-created on first run. All writes protected by <code>threading.Lock()</code>. Migrations are idempotent (<code>ALTER TABLE ... ADD COLUMN</code> wrapped in try/except).</p>
+
+<h3>users</h3>
+<table>
+  <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>id</td><td>INTEGER PK</td><td>Auto-increment</td></tr>
+    <tr><td>email</td><td>TEXT UNIQUE</td><td>Lowercased on input</td></tr>
+    <tr><td>password_hash</td><td>TEXT</td><td>werkzeug PBKDF2-HMAC-SHA256</td></tr>
+    <tr><td>display_name</td><td>TEXT</td><td>Optional</td></tr>
+    <tr><td>role</td><td>TEXT</td><td><code>user</code> | <code>admin</code> | <code>superadmin</code></td></tr>
+    <tr><td>is_active</td><td>INTEGER</td><td>1 = active, 0 = suspended</td></tr>
+    <tr><td>created_at</td><td>TEXT</td><td>UTC datetime string</td></tr>
+    <tr><td>last_login</td><td>TEXT</td><td>Updated on successful login</td></tr>
+    <tr><td>must_change_password</td><td>INTEGER</td><td>1 = redirect to change-password on login</td></tr>
+  </tbody>
+</table>
+
+<h3>research_jobs</h3>
+<table>
+  <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>id</td><td>INTEGER PK</td><td></td></tr>
+    <tr><td>user_id</td><td>INTEGER FK</td><td>References users.id</td></tr>
+    <tr><td>job_type</td><td>TEXT</td><td><code>research</code> | <code>job_search</code> | <code>prompt_gen</code> | <code>skill_gen</code></td></tr>
+    <tr><td>topic</td><td>TEXT</td><td>Human-readable label</td></tr>
+    <tr><td>status</td><td>TEXT</td><td><code>pending</code> → <code>running</code> → <code>done</code> | <code>error</code></td></tr>
+    <tr><td>message</td><td>TEXT</td><td>Live status message shown in spinner</td></tr>
+    <tr><td>result_slug</td><td>TEXT</td><td>Article slug (research/prompt/skill jobs)</td></tr>
+    <tr><td>result_data</td><td>TEXT</td><td>JSON string (job_search results)</td></tr>
+    <tr><td>payload</td><td>TEXT</td><td>JSON — original request payload, persisted for restart recovery</td></tr>
+    <tr><td>created_at</td><td>TEXT</td><td>UTC datetime</td></tr>
+    <tr><td>completed_at</td><td>TEXT</td><td>Set when status → done | error</td></tr>
+  </tbody>
+</table>
+
+<h3>articles</h3>
+<table>
+  <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>id</td><td>INTEGER PK</td><td></td></tr>
+    <tr><td>user_id</td><td>INTEGER FK</td><td>Owner</td></tr>
+    <tr><td>job_id</td><td>INTEGER FK</td><td>Creating job</td></tr>
+    <tr><td>title</td><td>TEXT</td><td>Article title (first H1 from markdown)</td></tr>
+    <tr><td>slug</td><td>TEXT</td><td>UNIQUE per user — URL-safe filename without extension</td></tr>
+    <tr><td>file_path</td><td>TEXT</td><td>Relative path to .md file</td></tr>
+    <tr><td>topic</td><td>TEXT</td><td>Original search topic</td></tr>
+    <tr><td>word_count</td><td>INTEGER</td><td></td></tr>
+    <tr><td>created_at</td><td>TEXT</td><td>UTC datetime</td></tr>
+    <tr><td>is_public</td><td>INTEGER</td><td>0 = private, 1 = publicly accessible via share link</td></tr>
+    <tr><td>share_token</td><td>TEXT</td><td><code>secrets.token_urlsafe(24)</code> — generated on first publish, reused on re-enable</td></tr>
+  </tbody>
+</table>
+
+<h3>articles_fts (FTS5 virtual table)</h3>
+<pre>CREATE VIRTUAL TABLE articles_fts USING fts5(
+    title, topic,
+    tokenize='unicode61'
+)</pre>
+<p>Rowid matches <code>articles.id</code>. Backfilled on startup. Populated on <code>create_article()</code>. Query via <code>articles_fts MATCH ?</code> with FTS5 query syntax. Results ordered by <code>rank</code>.</p>
+
+<h3>api_keys</h3>
+<table>
+  <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>id</td><td>INTEGER PK</td><td></td></tr>
+    <tr><td>user_id</td><td>INTEGER FK</td><td></td></tr>
+    <tr><td>name</td><td>TEXT</td><td>User-assigned label</td></tr>
+    <tr><td>key_hash</td><td>TEXT UNIQUE</td><td>SHA-256 of raw key. Raw key never stored.</td></tr>
+    <tr><td>is_active</td><td>INTEGER</td><td>0 = revoked</td></tr>
+    <tr><td>created_at</td><td>TEXT</td><td></td></tr>
+    <tr><td>last_used_at</td><td>TEXT</td><td>Updated on each successful auth</td></tr>
+  </tbody>
+</table>
+
+<h3>search_cache</h3>
+<table>
+  <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>topic_key</td><td>TEXT PK</td><td><code>topic.lower().strip()</code></td></tr>
+    <tr><td>results_json</td><td>TEXT</td><td>JSON-serialised list of DuckDuckGo result dicts</td></tr>
+    <tr><td>cached_at</td><td>TEXT</td><td>UTC datetime. TTL checked in Python (not SQL).</td></tr>
+  </tbody>
+</table>
+
+<h3>schedules</h3>
+<table>
+  <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>id</td><td>INTEGER PK</td><td></td></tr>
+    <tr><td>user_id</td><td>INTEGER FK</td><td></td></tr>
+    <tr><td>topic</td><td>TEXT</td><td>Research topic to run</td></tr>
+    <tr><td>frequency</td><td>TEXT</td><td><code>daily</code> | <code>weekly</code></td></tr>
+    <tr><td>is_active</td><td>INTEGER</td><td>0 = paused</td></tr>
+    <tr><td>next_run_at</td><td>TEXT</td><td>UTC ISO datetime. Scheduler checks this field.</td></tr>
+    <tr><td>last_run_at</td><td>TEXT</td><td>Updated after each fire</td></tr>
+    <tr><td>last_job_id</td><td>INTEGER</td><td>Job ID from most recent run</td></tr>
+    <tr><td>created_at</td><td>TEXT</td><td></td></tr>
+  </tbody>
+</table>
+
+<!-- SECTION 5 -->
+<hr class="divider">
+<span class="sec-label" id="pipeline">Section 05</span>
+<h2>Research Pipeline</h2>
+
+<div class="flow">
+  <div class="flow-step">Cache check</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">DDGS search</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">Cache write</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">Page fetch</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">Claude prompt</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">Source append</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">Save .md + DB</div>
+</div>
+
+<h3>Step-by-step</h3>
+
+<h4>1. Cache check</h4>
+<p>Key: <code>topic.lower().strip()</code>. If a matching row exists in <code>search_cache</code> and <code>cached_at</code> is within <code>SEARCH_CACHE_TTL_HOURS</code> (default 6h), the cached results list is used — no DDGS call made.</p>
+
+<h4>2. DuckDuckGo search</h4>
+<p>Up to 3 query variations per topic (e.g. topic, topic + "overview", topic + "latest"). <code>DDGS().text(query, max_results=10)</code>. Results deduplicated by URL. <code>time.sleep(1)</code> between queries to avoid rate limiting.</p>
+
+<h4>3. Domain filtering</h4>
+<p>Skip results where the URL contains blocked TLDs (<code>.cn .ru .jp .kr</code>) or blocked patterns (<code>baidu zhidao sina weibo sogou</code>). Keeps English-language sources.</p>
+
+<h4>4. Page fetch</h4>
+<p>GET request, 10-second timeout, <code>text/html</code> content-type check only. HTML stripped with regex. First 8000 characters of plain text kept. Up to 5 pages fetched. Only pages returning HTTP 200 are included.</p>
+
+<h4>5. Claude summarise</h4>
+<p>Prompt constructed: topic + fetched page content. Sent to <code>call_claude()</code>. Expected output: markdown with exactly <code>## Overview</code> and <code>## Key Findings</code> sections. 600–1000 words. No preamble.</p>
+
+<h4>6. Source verification &amp; append</h4>
+<p>Only URLs that returned HTTP 200 during fetch are appended as <code>## Sources</code>. No Claude-generated or unverified URLs are ever included. Sources render as clickable links.</p>
+
+<h4>7. Save</h4>
+<p>Written to <code>research/&lt;user_id&gt;/YYYY-MM-DD_&lt;slug&gt;.md</code> with <code>encoding='utf-8'</code>. <code>models.create_article()</code> inserts DB record and FTS5 index. <code>models.update_job(status='done', result_slug=slug)</code>. Frontend polling detects status change, redirects to article.</p>
+
+<!-- SECTION 6 -->
+<hr class="divider">
+<span class="sec-label" id="claude">Section 06</span>
+<h2>Claude Integration</h2>
+
+<h3>utils.py — single entry point</h3>
+<p>All pipeline files import <code>call_claude</code> or <code>call_claude_fast</code> from <code>utils.py</code>. No Claude-specific code exists anywhere else.</p>
+
+<div class="two-col">
+  <div class="col-card">
+    <h4>CLI path (_run_cli)</h4>
+    <p><code>subprocess.run([CLAUDE_CMD, "-p"], input=prompt, capture_output=True, text=True, encoding='utf-8', timeout=timeout)</code></p>
+    <p>CP1252→UTF-8 re-encode attempted on output (Windows encoding artefact fix). Non-zero returncode raises RuntimeError.</p>
+  </div>
+  <div class="col-card">
+    <h4>SDK path (_run_sdk)</h4>
+    <p><code>anthropic.Anthropic().messages.create(model="claude-sonnet-4-6", max_tokens=4096, messages=[...])</code></p>
+    <p>Only called if CLI raises an exception AND <code>ANTHROPIC_API_KEY</code> is set in environment. Silent fallback — pipelines never know which path ran.</p>
+  </div>
+</div>
+
+<h3>Claude CMD resolution</h3>
+<p>At module load, <code>_resolve_claude()</code> searches:</p>
+<ol>
+  <li><code>shutil.which("claude", path=npm_bin + PATH)</code> where npm_bin = <code>~/AppData/Roaming/npm/</code></li>
+  <li>Direct <code>claude.cmd</code> path in npm_bin if shutil.which fails</li>
+  <li>Fallback to bare <code>"claude"</code> string (relies on system PATH)</li>
+</ol>
+<p>Result stored in module-level <code>CLAUDE_CMD</code>. Resolved once at startup.</p>
+
+<h3>Timeout tiers</h3>
+<table>
+  <thead><tr><th>Function</th><th>Default Timeout</th><th>Used by</th></tr></thead>
+  <tbody>
+    <tr><td><code>call_claude(prompt)</code></td><td>120s</td><td>Research summarisation, comparison synthesis</td></tr>
+    <tr><td><code>call_claude_fast(prompt)</code></td><td>60s</td><td>Prompt generator, skill generator</td></tr>
+  </tbody>
+</table>
+
+<!-- SECTION 7 -->
+<hr class="divider">
+<span class="sec-label" id="jobs">Section 07</span>
+<h2>Background Jobs &amp; Scheduler</h2>
+
+<h3>Job Queue (background.py)</h3>
+<p><code>ThreadPoolExecutor(max_workers=MAX_CONCURRENT_JOBS)</code> — bounded. Prevents Claude call storms. <code>enqueue(job_type, payload, user_id)</code>:</p>
+<ol class="steps">
+  <li>Creates DB record in <code>research_jobs</code> (status: pending)</li>
+  <li>Submits <code>_run_safe(handler, payload, user_id, job_id)</code> to executor</li>
+  <li>Returns <code>job_id</code> immediately to caller</li>
+</ol>
+<p><code>_run_safe</code> catches all exceptions and sets job status to <code>error</code> — handlers never crash the pool.</p>
+
+<h3>Job Recovery on Restart</h3>
+<p><code>recover_pending_jobs()</code> is called once at startup (lock-guarded):</p>
+<ol>
+  <li><code>reset_stuck_jobs()</code> — sets all <code>running</code> jobs back to <code>pending</code> (they were killed mid-flight)</li>
+  <li>Fetches all <code>pending</code> jobs. Restores payload from DB JSON. Resubmits to executor.</li>
+</ol>
+
+<h3>Scheduler Daemon</h3>
+<p><code>start_scheduler()</code> launches a single daemon thread named <code>ra_scheduler</code>. Loop:</p>
+<pre>while True:
+    sleep(60)
+    due = models.get_due_schedules()  # active WHERE next_run_at <= utcnow()
+    for sched in due:
+        delta = _FREQ_DELTA[sched["frequency"]]  # timedelta(days=1) or (weeks=1)
+        next_run = (datetime.utcnow() + delta).isoformat()
+        job_id = enqueue("research", {"topic": sched["topic"]}, sched["user_id"])
+        models.update_schedule_after_run(sched["id"], next_run, job_id)
+    # broad except: pass — never crash</pre>
+
+<!-- SECTION 8 -->
+<hr class="divider">
+<span class="sec-label" id="api">Section 08</span>
+<h2>REST API Reference</h2>
+
+<h3>Authentication</h3>
+<p>All <code>/api/*</code> endpoints require one of:</p>
+<ul>
+  <li><code>X-API-Key: ra_&lt;token&gt;</code> header</li>
+  <li><code>Authorization: Bearer ra_&lt;token&gt;</code> header</li>
+</ul>
+<p>Key is looked up by SHA-256 hash. On success, <code>last_used_at</code> is updated. User is stored in <code>g.api_user</code>.</p>
+
+<h3>Rate Limiting</h3>
+<p>In-memory sliding window per <code>user_id</code>. Window: 1 hour. Default limit: 20 calls. On breach: HTTP 429 + <code>Retry-After: &lt;seconds&gt;</code> header.</p>
+
+<h3>Endpoints</h3>
+
+<h4>POST /api/research</h4>
+<table>
+  <thead><tr><th>Field</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Auth</td><td>Required</td></tr>
+    <tr><td>Body</td><td><code>{"topic": "string"}</code></td></tr>
+    <tr><td>Response 202</td><td><code>{"job_id": int, "status": "pending"}</code></td></tr>
+    <tr><td>Response 400</td><td><code>{"error": "topic required"}</code></td></tr>
+    <tr><td>Response 429</td><td><code>{"error": "rate limit exceeded"}</code> + <code>Retry-After</code> header</td></tr>
+  </tbody>
+</table>
+
+<h4>POST /api/jobs/search</h4>
+<table>
+  <thead><tr><th>Field</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Auth</td><td>Required</td></tr>
+    <tr><td>Body</td><td><code>{"query": "string"}</code></td></tr>
+    <tr><td>Response 202</td><td><code>{"job_id": int, "status": "pending"}</code></td></tr>
+    <tr><td>Response 429</td><td>Rate limit exceeded</td></tr>
+  </tbody>
+</table>
+
+<h4>GET /api/status/&lt;job_id&gt;</h4>
+<table>
+  <thead><tr><th>Field</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Auth</td><td>Required</td></tr>
+    <tr><td>Response 200</td><td><code>{"status": "done", "message": "...", "result_slug": "...", "result_data": "..."}</code></td></tr>
+    <tr><td>Response 404</td><td>Job not found or belongs to different user</td></tr>
+  </tbody>
+</table>
+
+<h3>Example: full research workflow</h3>
+<pre>## 1. Start research
+curl -X POST http://localhost:5001/api/research \
+  -H "X-API-Key: ra_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{"topic": "quantum computing breakthroughs 2025"}'
+# → {"job_id": 42, "status": "pending"}
+
+## 2. Poll until done
+curl -H "X-API-Key: ra_your_key" \
+  http://localhost:5001/api/status/42
+# → {"status": "running", "message": "Fetching pages..."}
+# → {"status": "done", "result_slug": "2026-06-25_quantum-computing"}</pre>
+
+<!-- SECTION 9 -->
+<hr class="divider">
+<span class="sec-label" id="auth">Section 09</span>
+<h2>Authentication &amp; Security</h2>
+
+<h3>User auth flow</h3>
+<ol class="steps">
+  <li>User submits login form (CSRF token validated)</li>
+  <li>IP checked against login rate limiter (5 attempts → 15 min lockout)</li>
+  <li>Email lookup → <code>check_password_hash</code> (werkzeug PBKDF2-SHA256)</li>
+  <li><code>set_session(user)</code> — populates Flask session with user_id, email, role, display_name, last_activity</li>
+  <li>If <code>must_change_password = 1</code>, redirect to <code>/change-password</code> before dashboard</li>
+</ol>
+
+<h3>Session timeout</h3>
+<p><code>before_request</code> middleware checks <code>session["last_activity"]</code> on every request. If elapsed &gt; <code>SESSION_LIFETIME_MINUTES</code> (default 30), session is cleared and user redirected to login. Last activity updated on each request.</p>
+
+<h3>Security headers (every response)</h3>
+<table>
+  <thead><tr><th>Header</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>X-Content-Type-Options</td><td>nosniff</td></tr>
+    <tr><td>X-Frame-Options</td><td>DENY</td></tr>
+    <tr><td>X-XSS-Protection</td><td>1; mode=block</td></tr>
+    <tr><td>Referrer-Policy</td><td>strict-origin-when-cross-origin</td></tr>
+    <tr><td>Permissions-Policy</td><td>geolocation=(), microphone=(), camera=()</td></tr>
+    <tr><td>Content-Security-Policy</td><td>default-src 'self'; script/style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; frame-ancestors 'none'</td></tr>
+    <tr><td>Strict-Transport-Security</td><td>max-age=31536000; includeSubDomains (production only)</td></tr>
+  </tbody>
+</table>
+
+<h3>Role-based access</h3>
+<table>
+  <thead><tr><th>Decorator</th><th>Minimum role</th><th>Used on</th></tr></thead>
+  <tbody>
+    <tr><td><code>@login_required</code></td><td>Any authenticated user</td><td>All dashboard routes</td></tr>
+    <tr><td><code>@admin_required</code></td><td>admin or superadmin</td><td>All /admin/* routes (blueprint before_request)</td></tr>
+    <tr><td><code>@superadmin_required</code></td><td>superadmin only</td><td>User deletion, role change to superadmin</td></tr>
+    <tr><td><code>@api_auth_required</code></td><td>Valid API key</td><td>All /api/* routes</td></tr>
+  </tbody>
+</table>
+
+<!-- SECTION 10 -->
+<hr class="divider">
+<span class="sec-label" id="features">Section 10</span>
+<h2>Feature Reference</h2>
+
+<h3>Public Article Sharing</h3>
+<ul>
+  <li><strong>Toggle endpoint:</strong> <code>POST /article/&lt;slug&gt;/share</code> — returns <code>{"token": "...", "is_public": true}</code></li>
+  <li><strong>Token generation:</strong> <code>secrets.token_urlsafe(24)</code> on first enable. Token is preserved in DB on subsequent enable/disable toggles (stable URLs).</li>
+  <li><strong>Public route:</strong> <code>GET /share/&lt;token&gt;</code> — no auth required. Fetches article by token + <code>is_public=1</code>. Renders <code>share.html</code> (standalone, no sidebar).</li>
+</ul>
+
+<h3>Article Comparison</h3>
+<ul>
+  <li><strong>Route:</strong> <code>GET /compare?slugs=a,b,c,d</code> (max 4 slugs)</li>
+  <li>Reads each article .md file, renders to HTML via python-markdown</li>
+  <li>Calls Claude for synthesis (one combined prompt). If Claude fails, synthesis panel shows "unavailable" — columns still render.</li>
+  <li>CSS grid: <code>grid-template-columns: repeat(N, 1fr)</code>. Each column: <code>max-height: 70vh; overflow-y: auto</code>.</li>
+  <li>h1 override in compare context: <code>font-size: 0.95rem</code> (prevents huge headings in narrow columns)</li>
+  <li>JS: checkboxes on article cards, floating compare bar (<code>#compare-bar</code>), navigates on click</li>
+</ul>
+
+<h3>Scheduled Research</h3>
+<ul>
+  <li><strong>Frequencies:</strong> <code>daily</code> = timedelta(days=1) | <code>weekly</code> = timedelta(weeks=1)</li>
+  <li><code>next_run_at</code> stored as UTC ISO string. Scheduler compares against <code>datetime.utcnow()</code>.</li>
+  <li>On pause: <code>is_active = 0</code> — scheduler skips it. <code>next_run_at</code> preserved.</li>
+  <li>On resume: <code>is_active = 1</code> — if <code>next_run_at</code> is in the past, fires on next 60s tick.</li>
+</ul>
+
+<h3>Search Result Cache</h3>
+<ul>
+  <li>Key: <code>topic.lower().strip()</code> — case/whitespace normalised</li>
+  <li>Hit: skip DDGS call entirely, use cached results JSON, log "Using cached search results..."</li>
+  <li>Miss or expired: run DDGS, write cache with UPSERT (<code>ON CONFLICT(topic_key) DO UPDATE</code>)</li>
+  <li>TTL check: Python-side <code>(datetime.utcnow() - cached_at).total_seconds() &gt; ttl_hours * 3600</code></li>
+</ul>
+
+<h3>Full-Text Search</h3>
+<ul>
+  <li>SQLite FTS5, <code>tokenize='unicode61'</code> (handles Unicode, punctuation)</li>
+  <li>Query: special chars stripped, words joined with spaces → <code>MATCH ?</code></li>
+  <li>Results ordered by FTS5 <code>rank</code> (BM25 relevance)</li>
+  <li>Dashboard search: <code>GET /dashboard?q=query</code> — passes to <code>search_articles()</code>, renders filtered card grid</li>
+</ul>
+
+<!-- SECTION 11 -->
+<hr class="divider">
+<span class="sec-label" id="admin">Section 11</span>
+<h2>Admin Panel</h2>
+
+<p>Blueprint prefix: <code>/admin</code>. All routes require <code>admin</code> or <code>superadmin</code> role (enforced in <code>@admin_bp.before_request</code>).</p>
+
+<table>
+  <thead><tr><th>Route</th><th>Method</th><th>Action</th></tr></thead>
+  <tbody>
+    <tr><td><code>/admin/</code></td><td>GET</td><td>Stats: user counts, article count, jobs by status, recent 10 jobs</td></tr>
+    <tr><td><code>/admin/users</code></td><td>GET</td><td>All users, filterable by email. Article + job counts per user.</td></tr>
+    <tr><td><code>/admin/users/&lt;id&gt;</code></td><td>GET</td><td>User detail page</td></tr>
+    <tr><td><code>/admin/users/&lt;id&gt;/set-role</code></td><td>POST</td><td>Change role. Superadmin-only for superadmin role changes.</td></tr>
+    <tr><td><code>/admin/users/&lt;id&gt;/toggle</code></td><td>POST</td><td>Flip is_active</td></tr>
+    <tr><td><code>/admin/users/&lt;id&gt;/delete</code></td><td>POST</td><td>Delete user + <code>shutil.rmtree(research/&lt;id&gt;/)</code> + all DB records</td></tr>
+    <tr><td><code>/admin/jobs</code></td><td>GET</td><td>All jobs, filter by status/type/user</td></tr>
+    <tr><td><code>/admin/jobs/&lt;id&gt;/delete</code></td><td>POST</td><td>Delete non-done job</td></tr>
+    <tr><td><code>/admin/jobs/delete-errors</code></td><td>POST</td><td>Bulk delete all error-status jobs</td></tr>
+  </tbody>
+</table>
+
+<!-- SECTION 12 -->
+<hr class="divider">
+<span class="sec-label" id="ui">Section 12</span>
+<h2>UI &amp; Frontend</h2>
+
+<h3>Brand colours</h3>
+<table>
+  <thead><tr><th>Variable</th><th>Light</th><th>Dark</th><th>Use</th></tr></thead>
+  <tbody>
+    <tr><td><code>--accent</code></td><td>#16a34a</td><td>#16a34a</td><td>Primary green — buttons, badges, links</td></tr>
+    <tr><td><code>--accent-dark</code></td><td>#14532d</td><td>#14532d</td><td>Sidebar background, headings</td></tr>
+    <tr><td><code>--accent-light</code></td><td>#dcfce7</td><td>#14532d</td><td>Card backgrounds, code blocks</td></tr>
+    <tr><td><code>--bg</code></td><td>#f0fdf4</td><td>#0a1a0f</td><td>Page background</td></tr>
+    <tr><td><code>--bg-card</code></td><td>#ffffff</td><td>#0f2a18</td><td>Card background</td></tr>
+    <tr><td><code>--text</code></td><td>#1a1a1a</td><td>#e2e8f0</td><td>Body text</td></tr>
+    <tr><td><code>--text-muted</code></td><td>#6b7280</td><td>#94a3b8</td><td>Secondary text, meta info</td></tr>
+    <tr><td><code>--border</code></td><td>#d1fae5</td><td>#1e3a2a</td><td>Card borders, dividers</td></tr>
+  </tbody>
+</table>
+
+<h3>Sidebar design</h3>
+<ul>
+  <li>Background: <code>#14532d</code> (always, ignores dark mode toggle)</li>
+  <li>Nav items: <code>border-radius: 8px</code>; hover: <code>background: rgba(255,255,255,0.08)</code></li>
+  <li>Active item: <code>background: #16a34a</code> + <code>box-shadow: 0 2px 8px rgba(0,0,0,0.25)</code></li>
+  <li>Section dividers: <code>&lt;hr class="sidebar-divider"&gt;</code> — <code>border-top: 1px solid rgba(255,255,255,0.08); margin: 6px 12px</code></li>
+  <li>Sections: Research (Dashboard, Schedules) | Account (API Keys, Admin) | Logout</li>
+</ul>
+
+<h3>Job status polling (main.js)</h3>
+<p>On research/job form submit: spinner shown, <code>job_id</code> returned from AJAX POST, <code>setInterval(1500ms)</code> polls <code>/api/status/&lt;job_id&gt;</code>. On done: redirect. On error: flash message, hide spinner.</p>
+
+<h3>Dark mode</h3>
+<p>Toggle button in sidebar footer. Adds/removes <code>body.dark-mode</code>. State persisted to <code>localStorage["theme"]</code>. Restored on page load via inline script before first paint.</p>
+
+<!-- SECTION 13 -->
+<hr class="divider">
+<span class="sec-label" id="errors">Section 13</span>
+<h2>Error Reference &amp; Troubleshooting</h2>
+
+<table>
+  <thead><tr><th>Error</th><th>Cause</th><th>Fix</th></tr></thead>
+  <tbody>
+    <tr><td>Research spins forever</td><td>Claude CLI timeout or unreachable</td><td>Test <code>claude -p</code> in terminal. Set <code>ANTHROPIC_API_KEY</code> for SDK fallback.</td></tr>
+    <tr><td><code>claude: not found</code></td><td>CLI not installed or not on PATH</td><td><code>npm install -g @anthropic-ai/claude-code</code>. App checks npm bin path automatically.</td></tr>
+    <tr><td>Port 5001 in use</td><td>Previous process still running</td><td><code>netstat -ano | findstr :5001</code> → <code>taskkill /PID &lt;pid&gt; /F</code></td></tr>
+    <tr><td>DDGS rate limit</td><td>Too many searches in short time</td><td>Built-in 1s sleep between queries. Wait and retry. Cache means 2nd attempt is instant.</td></tr>
+    <tr><td>SQLite locked</td><td>External tool holds file open</td><td>All writes use <code>threading.Lock()</code>. Close any DB browser tools.</td></tr>
+    <tr><td>Session expires constantly</td><td>SESSION_LIFETIME_MINUTES too short</td><td>Increase to 120 or more in <code>.env</code></td></tr>
+    <tr><td>API 401</td><td>Invalid or revoked key</td><td>Generate new key at Sidebar → API Keys</td></tr>
+    <tr><td>API 429</td><td>Rate limit exceeded</td><td>Wait <code>Retry-After</code> seconds. Or increase <code>API_RATE_LIMIT</code> in <code>.env</code>.</td></tr>
+    <tr><td>Share 404</td><td>Article made private or deleted</td><td>Re-enable sharing on the article. Same token URL restored.</td></tr>
+    <tr><td>UnicodeDecodeError</td><td>Claude outputs CP1252-encoded text on Windows</td><td>Handled in <code>_run_cli()</code> — automatic re-encode attempted.</td></tr>
+    <tr><td><code>ModuleNotFoundError</code></td><td>Dependencies not installed</td><td><code>pip install -r requirements.txt</code></td></tr>
+    <tr><td>Circular import</td><td>Pipeline modules imported at top of background.py</td><td>Imports are inside <code>_get_handlers()</code> — lazy, first-call only.</td></tr>
+    <tr><td>FTS5 not available</td><td>SQLite compiled without FTS5</td><td>Default Python on Windows includes FTS5. Verify: <code>python -c "import sqlite3; sqlite3.connect(':memory:').execute('CREATE VIRTUAL TABLE t USING fts5(x)')"</code></td></tr>
+  </tbody>
+</table>
+
+<!-- SECTION 14 -->
+<hr class="divider">
+<span class="sec-label" id="deploy">Section 14</span>
+<h2>Deployment Guide</h2>
+
+<h3>Pre-deployment checklist</h3>
+<ul>
+  <li>Set strong random <code>SECRET_KEY</code> in <code>.env</code></li>
+  <li>Set <code>DEBUG=false</code></li>
+  <li>Add HTTPS reverse proxy (nginx / Caddy) — app sets <code>Strict-Transport-Security</code> + Secure cookie when <code>DEBUG=false</code></li>
+  <li>Never commit <code>.env</code> or <code>research_agent.db</code></li>
+  <li>Regular backups of <code>research_agent.db</code> and <code>research/</code> folder</li>
+</ul>
+
+<h3>Production server</h3>
+<p>The app uses Waitress at startup — no Gunicorn or uWSGI needed:</p>
+<pre>from waitress import serve
+serve(app, host="0.0.0.0", port=Config.PORT)</pre>
+
+<h3>Nginx reverse proxy</h3>
+<pre>server {
+    listen 443 ssl;
+    server_name yourdomain.com;
+    location / {
+        proxy_pass http://127.0.0.1:5001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+}</pre>
+
+<h3>What resets on restart</h3>
+<table>
+  <thead><tr><th>State</th><th>Persists?</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>Research jobs (pending/running)</td><td>Yes — DB</td><td>Requeued automatically via <code>recover_pending_jobs()</code></td></tr>
+    <tr><td>Schedules</td><td>Yes — DB</td><td>Overdue ones fire on next 60s tick</td></tr>
+    <tr><td>Search cache</td><td>Yes — DB</td><td>6h TTL survives restarts</td></tr>
+    <tr><td>Login rate limit counters</td><td>No — in-memory</td><td>Resets on restart (acceptable)</td></tr>
+    <tr><td>API rate limit windows</td><td>No — in-memory</td><td>Resets on restart (acceptable)</td></tr>
+    <tr><td>Sessions</td><td>No — cookie-based</td><td>Users re-login after server restart</td></tr>
+  </tbody>
+</table>
+
+<div class="callout info">
+  <strong>Scaling path</strong>
+  For high-traffic multi-user deployments: replace in-memory rate limiters with Redis, switch SQLite to PostgreSQL (models.py is the only file that needs updating — all queries use standard SQL). Rate limiter and cache interfaces are already abstracted.
+</div>
+
+<hr class="divider">
+<p style="text-align:center; color:#9ca3af; font-size:11px; margin-top: 40px;">
+  Research Agent v2.0 · Complete System Documentation · SCYKELTD AI Consultancy · June 2026
+</p>
+
+</body>
+</html>

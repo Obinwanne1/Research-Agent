@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Research Agent — Client Handover Document</title>
+<style>
+@page { size: A4; margin: 22mm 20mm 22mm 20mm; }
+@media print {
+  .no-print { display:none; }
+  body { font-size: 10.5pt; }
+  .chapter { page-break-before: always; break-before: page; }
+  h1.chapter-title { font-size: 22pt; page-break-after: avoid; break-after: avoid; }
+  h2 { font-size: 13pt; page-break-after: avoid; break-after: avoid; }
+  h3 { font-size: 11pt; page-break-after: avoid; break-after: avoid; }
+  h4 { page-break-after: avoid; break-after: avoid; }
+  .cover { page-break-after: always; break-after: page; }
+  .toc-page { page-break-after: always; break-after: page; }
+  h2 + p, h2 + ul, h2 + ol, h2 + table, h2 + pre, h2 + .callout, h2 + .steps,
+  h3 + p, h3 + ul, h3 + ol, h3 + table, h3 + pre, h3 + .callout, h3 + .steps,
+  h4 + p, h4 + ul, h4 + ol, h4 + table, h4 + pre, h4 + .callout {
+    page-break-before: avoid; break-before: avoid;
+  }
+  p, li { orphans: 3; widows: 3; }
+}
+* { box-sizing: border-box; margin:0; padding:0; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: #1e1e1e;
+  background: #fff;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 40px 60px;
+}
+
+/* ── COVER ── */
+.cover {
+  min-height: 97vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 60px 0 40px;
+  border-bottom: 5px solid #16a34a;
+}
+.cover-top { flex: 1; }
+.cover-logo-bar { display:flex; align-items:center; gap:14px; margin-bottom:80px; }
+.cover-logo-mark {
+  width:44px; height:44px; background:#16a34a; border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; font-size:22px; font-weight:900;
+}
+.cover-logo-text { font-size:14px; font-weight:700; color:#374151; letter-spacing:0.5px; }
+.cover-logo-sub  { font-size:11px; color:#9ca3af; }
+.cover-type {
+  font-size:10px; font-weight:800; text-transform:uppercase;
+  letter-spacing:3px; color:#16a34a; margin-bottom:18px;
+}
+.cover h1 { font-size:48px; font-weight:900; color:#111; line-height:1.1; margin-bottom:8px; }
+.cover-sub { font-size:20px; color:#374151; font-weight:300; margin-bottom:48px; }
+.cover-desc { font-size:13.5px; color:#6b7280; max-width:520px; line-height:1.7; margin-bottom:60px; }
+.cover-meta-grid {
+  display:grid; grid-template-columns:repeat(4,1fr);
+  gap:0; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; max-width:640px;
+}
+.cover-meta-cell { padding:16px 20px; border-right:1px solid #e5e7eb; }
+.cover-meta-cell:last-child { border-right:none; }
+.cover-meta-label { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; color:#9ca3af; margin-bottom:4px; }
+.cover-meta-value { font-size:12.5px; font-weight:700; color:#111; }
+.cover-bottom { display:flex; justify-content:space-between; align-items:flex-end; padding-top:24px; border-top:1px solid #e5e7eb; font-size:11px; color:#9ca3af; }
+.cover-confidential { background:#fef2f2; color:#991b1b; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; padding:4px 12px; border-radius:4px; border:1px solid #fecaca; }
+
+/* ── TOC ── */
+.toc-page { padding:60px 0 40px; }
+.toc-page h2 { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:2px; color:#16a34a; margin-bottom:32px; padding-bottom:12px; border-bottom:2px solid #dcfce7; }
+.toc-chapter { display:flex; align-items:baseline; gap:12px; margin-bottom:8px; padding:6px 0; border-bottom:1px dotted #e5e7eb; }
+.toc-chapter-num { font-size:10px; font-weight:800; color:#16a34a; min-width:32px; text-transform:uppercase; }
+.toc-chapter-title { font-size:14px; font-weight:700; color:#111; flex:1; }
+.toc-section { display:flex; align-items:baseline; gap:12px; padding:3px 0; margin-left:44px; }
+.toc-section-num { font-size:11px; color:#9ca3af; min-width:28px; }
+.toc-section-title { font-size:12px; color:#374151; }
+
+/* ── CHAPTER ── */
+.chapter { padding:60px 0 0; }
+.chapter-eyebrow { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:2.5px; color:#16a34a; margin-bottom:10px; }
+h1.chapter-title { font-size:34px; font-weight:900; color:#111; line-height:1.15; margin-bottom:6px; padding-bottom:20px; border-bottom:3px solid #16a34a; }
+.chapter-intro { font-size:13.5px; color:#6b7280; max-width:620px; line-height:1.7; margin:20px 0 40px; padding:16px 20px; background:#f9fafb; border-left:3px solid #d1d5db; border-radius:0 6px 6px 0; }
+
+/* ── HEADINGS ── */
+h2 { font-size:17px; font-weight:800; color:#14532d; margin:44px 0 12px; padding-bottom:8px; border-bottom:2px solid #dcfce7; page-break-after:avoid; break-after:avoid; orphans:3; widows:3; }
+h3 { font-size:13.5px; font-weight:700; color:#15803d; margin:28px 0 8px; page-break-after:avoid; break-after:avoid; }
+h4 { font-size:12.5px; font-weight:700; color:#374151; margin:20px 0 6px; page-break-after:avoid; break-after:avoid; }
+
+/* ── BODY ── */
+p  { margin-bottom:13px; color:#374151; }
+ul, ol { padding-left:22px; margin-bottom:14px; }
+li { margin-bottom:5px; color:#374151; }
+strong { color:#111; }
+
+/* ── CALLOUTS ── */
+.callout { border-radius:6px; padding:14px 18px; margin:18px 0; font-size:12.5px; }
+.note   { background:#f0fdf4; border-left:4px solid #16a34a; color:#14532d; }
+.warn   { background:#fefce8; border-left:4px solid #ca8a04; color:#713f12; }
+.danger { background:#fef2f2; border-left:4px solid #dc2626; color:#7f1d1d; }
+.info   { background:#eff6ff; border-left:4px solid #3b82f6; color:#1e40af; }
+.callout strong { display:block; margin-bottom:4px; font-size:11px; text-transform:uppercase; letter-spacing:0.8px; }
+
+/* ── TABLES ── */
+table { width:100%; border-collapse:collapse; font-size:12px; margin:16px 0 24px; }
+th { background:#14532d; color:#fff; padding:10px 13px; text-align:left; font-weight:700; font-size:10.5px; text-transform:uppercase; letter-spacing:0.5px; }
+td { padding:9px 13px; border-bottom:1px solid #e5e7eb; color:#374151; vertical-align:top; }
+tr:nth-child(even) td { background:#f9fafb; }
+
+/* ── CODE ── */
+code { background:#f1f5f9; border:1px solid #e2e8f0; border-radius:4px; padding:1px 6px; font-family:'Consolas','Courier New',monospace; font-size:11px; color:#0f172a; }
+pre { background:#0f172a; color:#e2e8f0; border-radius:8px; padding:18px 20px; font-size:11px; margin:16px 0; line-height:1.7; font-family:'Consolas','Courier New',monospace; overflow-x:auto; }
+pre code { background:none; border:none; padding:0; color:inherit; font-size:inherit; }
+
+/* ── STEPS ── */
+.steps { counter-reset:s; list-style:none; padding:0; }
+.steps li { counter-increment:s; display:flex; gap:16px; margin-bottom:14px; align-items:flex-start; }
+.steps li::before { content:counter(s); background:#16a34a; color:#fff; font-weight:800; font-size:11px; min-width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+
+/* ── BADGE ── */
+.badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; }
+.badge-green  { background:#dcfce7; color:#14532d; }
+.badge-blue   { background:#dbeafe; color:#1e40af; }
+.badge-purple { background:#ede9fe; color:#5b21b6; }
+.badge-gray   { background:#f3f4f6; color:#374151; }
+.badge-red    { background:#fee2e2; color:#991b1b; }
+.badge-yellow { background:#fef9c3; color:#713f12; }
+
+/* ── TWO COL ── */
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin:16px 0; }
+.col-card { border:1px solid #e5e7eb; border-radius:8px; padding:18px 20px; }
+.col-card h4 { margin-top:0; color:#14532d; }
+
+/* ── FEATURE GRID ── */
+.feature-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:20px 0; }
+.feature-card { border:1px solid #dcfce7; border-radius:8px; padding:16px 18px; background:#f9fffe; }
+.feature-card h4 { margin-top:0; color:#14532d; font-size:12.5px; margin-bottom:6px; }
+.feature-card p  { margin:0; font-size:11.5px; color:#6b7280; }
+
+/* ── DIVIDER ── */
+.divider { border:none; border-top:1px solid #e5e7eb; margin:40px 0; }
+
+/* ── NO PRINT BUTTON ── */
+.no-print { text-align:center; padding:20px 0; }
+.print-btn { background:#16a34a; color:#fff; border:none; padding:12px 32px; border-radius:6px; font-size:14px; font-weight:700; cursor:pointer; letter-spacing:0.3px; }
+.print-btn:hover { background:#15803d; }
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+</div>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-top">
+    <div class="cover-logo-bar">
+      <div class="cover-logo-mark">R</div>
+      <div>
+        <div class="cover-logo-text">Research Agent</div>
+        <div class="cover-logo-sub">AI Research Automation Platform</div>
+      </div>
+    </div>
+    <div class="cover-type">Client Handover Document</div>
+    <h1>Research Agent<br>v2.0</h1>
+    <div class="cover-sub">Complete Platform Handover &amp; Feature Reference</div>
+    <div class="cover-desc">
+      Full-stack AI research automation platform. Includes web research summaries, job search, prompt &amp; skill generation, scheduled automation, public sharing, REST API, article comparison, and full admin control. Built with Python, Flask, Claude Code CLI, and SQLite.
+    </div>
+    <div class="cover-meta-grid">
+      <div class="cover-meta-cell">
+        <div class="cover-meta-label">Delivered</div>
+        <div class="cover-meta-value">June 2026</div>
+      </div>
+      <div class="cover-meta-cell">
+        <div class="cover-meta-label">Version</div>
+        <div class="cover-meta-value">2.0 — Scale-Up</div>
+      </div>
+      <div class="cover-meta-cell">
+        <div class="cover-meta-label">Stack</div>
+        <div class="cover-meta-value">Python / Flask / SQLite</div>
+      </div>
+      <div class="cover-meta-cell">
+        <div class="cover-meta-label">Port</div>
+        <div class="cover-meta-value">5001 (default)</div>
+      </div>
+    </div>
+  </div>
+  <div class="cover-bottom">
+    <div>SCYKELTD AI Consultancy · Confidential</div>
+    <div class="cover-confidential">Confidential</div>
+  </div>
+</div>
+
+<!-- TABLE OF CONTENTS -->
+<div class="toc-page">
+  <h2>Table of Contents</h2>
+
+  <div class="toc-chapter">
+    <div class="toc-chapter-num">01</div>
+    <div class="toc-chapter-title">Platform Overview &amp; What's New</div>
+  </div>
+  <div class="toc-section"><div class="toc-section-num">1.1</div><div class="toc-section-title">Feature summary</div></div>
+  <div class="toc-section"><div class="toc-section-num">1.2</div><div class="toc-section-title">Version 2.0 upgrades</div></div>
+
+  <div class="toc-chapter">
+    <div class="toc-chapter-num">02</div>
+    <div class="toc-chapter-title">Setup &amp; Running the App</div>
+  </div>
+  <div class="toc-section"><div class="toc-section-num">2.1</div><div class="toc-section-title">Requirements</div></div>
+  <div class="toc-section"><div class="toc-section-num">2.2</div><div class="toc-section-title">Install &amp; start</div></div>
+  <div class="toc-section"><div class="toc-section-num">2.3</div><div class="toc-section-title">Environment configuration</div></div>
+
+  <div class="toc-chapter">
+    <div class="toc-chapter-num">03</div>
+    <div class="toc-chapter-title">Core Features — User Guide</div>
+  </div>
+  <div class="toc-section"><div class="toc-section-num">3.1</div><div class="toc-section-title">Research pipeline</div></div>
+  <div class="toc-section"><div class="toc-section-num">3.2</div><div class="toc-section-title">Job search</div></div>
+  <div class="toc-section"><div class="toc-section-num">3.3</div><div class="toc-section-title">Prompt &amp; skill generators</div></div>
+  <div class="toc-section"><div class="toc-section-num">3.4</div><div class="toc-section-title">Scheduled research</div></div>
+  <div class="toc-section"><div class="toc-section-num">3.5</div><div class="toc-section-title">Article comparison</div></div>
+  <div class="toc-section"><div class="toc-section-num">3.6</div><div class="toc-section-title">Public article sharing</div></div>
+  <div class="toc-section"><div class="toc-section-num">3.7</div><div class="toc-section-title">REST API &amp; API keys</div></div>
+
+  <div class="toc-chapter">
+    <div class="toc-chapter-num">04</div>
+    <div class="toc-chapter-title">Architecture &amp; Technical Reference</div>
+  </div>
+  <div class="toc-section"><div class="toc-section-num">4.1</div><div class="toc-section-title">File structure</div></div>
+  <div class="toc-section"><div class="toc-section-num">4.2</div><div class="toc-section-title">Database schema</div></div>
+  <div class="toc-section"><div class="toc-section-num">4.3</div><div class="toc-section-title">Claude integration (CLI + SDK fallback)</div></div>
+  <div class="toc-section"><div class="toc-section-num">4.4</div><div class="toc-section-title">Background jobs &amp; scheduler</div></div>
+  <div class="toc-section"><div class="toc-section-num">4.5</div><div class="toc-section-title">Security implementation</div></div>
+
+  <div class="toc-chapter">
+    <div class="toc-chapter-num">05</div>
+    <div class="toc-chapter-title">Admin Panel</div>
+  </div>
+
+  <div class="toc-chapter">
+    <div class="toc-chapter-num">06</div>
+    <div class="toc-chapter-title">Troubleshooting &amp; Common Errors</div>
+  </div>
+
+  <div class="toc-chapter">
+    <div class="toc-chapter-num">07</div>
+    <div class="toc-chapter-title">Deployment &amp; Production Notes</div>
+  </div>
+</div>
+
+<!-- CHAPTER 1 -->
+<div class="chapter">
+  <div class="chapter-eyebrow">Chapter 01</div>
+  <h1 class="chapter-title">Platform Overview &amp; What's New</h1>
+  <div class="chapter-intro">
+    Research Agent is a full-stack AI research automation platform. It turns any research topic into a structured, sourced summary in under 90 seconds — using DuckDuckGo for web discovery and Claude (via CLI subprocess) for AI summarisation. Version 2.0 adds REST API automation, recurring schedules, article comparison, public sharing, rate limiting, search caching, and a Claude SDK fallback.
+  </div>
+
+  <h2>1.1 Platform Feature Summary</h2>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h4>AI Research</h4>
+      <p>Topic → DuckDuckGo → fetch → Claude → 600–1000 word markdown summary with sources</p>
+    </div>
+    <div class="feature-card">
+      <h4>Job Search</h4>
+      <p>Role + location → structured cards with title, company, salary, Apply links</p>
+    </div>
+    <div class="feature-card">
+      <h4>Prompt Generator</h4>
+      <p>Creates optimised AI prompts with token estimate and GPT-4 comparison table</p>
+    </div>
+    <div class="feature-card">
+      <h4>Skill Generator</h4>
+      <p>Creates Claude Code skill .md files with triggers, steps, and constraints</p>
+    </div>
+    <div class="feature-card">
+      <h4>Scheduled Research</h4>
+      <p>Daily/weekly recurring research — daemon scheduler fires topics automatically</p>
+    </div>
+    <div class="feature-card">
+      <h4>Article Comparison</h4>
+      <p>Compare up to 4 articles side-by-side. Claude synthesises a combined summary</p>
+    </div>
+    <div class="feature-card">
+      <h4>Public Sharing</h4>
+      <p>Share any article via unique link — no login required for reader</p>
+    </div>
+    <div class="feature-card">
+      <h4>REST API</h4>
+      <p>API key auth — automate research from scripts, n8n, Zapier, cron jobs</p>
+    </div>
+    <div class="feature-card">
+      <h4>Full-Text Search</h4>
+      <p>SQLite FTS5 search across all article titles and topics instantly</p>
+    </div>
+    <div class="feature-card">
+      <h4>Admin Panel</h4>
+      <p>User management, role control, job monitor, stats dashboard</p>
+    </div>
+    <div class="feature-card">
+      <h4>Dark Mode</h4>
+      <p>One-click dark theme, persisted in localStorage across sessions</p>
+    </div>
+    <div class="feature-card">
+      <h4>Markdown Export</h4>
+      <p>Download any article as a raw .md file for offline use or sharing</p>
+    </div>
+  </div>
+
+  <h2>1.2 Version 2.0 Upgrades</h2>
+  <p>The following capabilities were added in the v2.0 scale-up:</p>
+
+  <table>
+    <thead>
+      <tr><th>Feature</th><th>What it adds</th><th>Files changed</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>REST API Key System</strong></td>
+        <td>Per-user API keys stored as SHA-256 hashes. <code>X-API-Key</code> or <code>Authorization: Bearer</code> on all <code>/api/*</code> routes. One UI page to manage keys.</td>
+        <td>models.py, auth.py, app.py, settings/api_keys.html</td>
+      </tr>
+      <tr>
+        <td><strong>Scheduled Research</strong></td>
+        <td>SQLite <code>schedules</code> table. Daemon thread wakes every 60s, fires due topics as research jobs, advances <code>next_run_at</code> by frequency delta.</td>
+        <td>models.py, background.py, app.py, schedules/index.html</td>
+      </tr>
+      <tr>
+        <td><strong>Public Article Sharing</strong></td>
+        <td><code>is_public</code> flag + <code>share_token</code> (<code>secrets.token_urlsafe(24)</code>) on articles. Public <code>/share/&lt;token&gt;</code> route requires no auth. Token is stable on re-enable.</td>
+        <td>models.py, app.py, article.html, share.html</td>
+      </tr>
+      <tr>
+        <td><strong>API Rate Limiting</strong></td>
+        <td>In-memory sliding window per <code>user_id</code>. 20 calls/hour default. Returns 429 + <code>Retry-After</code> header.</td>
+        <td>auth.py, app.py, config.py</td>
+      </tr>
+      <tr>
+        <td><strong>Search Result Cache</strong></td>
+        <td>SQLite <code>search_cache</code> table. Same topic re-searched within 6h hits cache, skips DuckDuckGo entirely. UPSERT on conflict.</td>
+        <td>models.py, research_agent.py, config.py</td>
+      </tr>
+      <tr>
+        <td><strong>Claude SDK Fallback</strong></td>
+        <td>If CLI subprocess fails, retries via <code>anthropic</code> SDK using <code>claude-sonnet-4-6</code>. Only activates if <code>ANTHROPIC_API_KEY</code> is set in env.</td>
+        <td>utils.py, requirements.txt</td>
+      </tr>
+      <tr>
+        <td><strong>Article Comparison</strong></td>
+        <td>Select 2–4 articles on dashboard. <code>/compare?slugs=a,b,c</code> renders CSS grid columns (each 70vh scrollable). Claude synthesis panel below.</td>
+        <td>app.py, compare.html, dashboard.html, main.js</td>
+      </tr>
+      <tr>
+        <td><strong>FTS5 Full-Text Search</strong></td>
+        <td>SQLite FTS5 virtual table indexed on article title + topic. Search box on dashboard. Backfills existing articles on first run.</td>
+        <td>models.py, app.py, dashboard.html</td>
+      </tr>
+      <tr>
+        <td><strong>Job Recovery on Restart</strong></td>
+        <td>Job payload persisted in DB. On startup: reset mid-flight jobs to pending, resubmit all pending to executor.</td>
+        <td>models.py, background.py</td>
+      </tr>
+      <tr>
+        <td><strong>Bounded Thread Pool</strong></td>
+        <td><code>ThreadPoolExecutor(max_workers=MAX_CONCURRENT_JOBS)</code> replaces unbounded daemon threads. Prevents Claude call storms under load.</td>
+        <td>background.py, config.py</td>
+      </tr>
+      <tr>
+        <td><strong>Security Headers</strong></td>
+        <td>Full CSP, X-Frame-Options DENY, X-Content-Type-Options, Referrer-Policy, Permissions-Policy on every response.</td>
+        <td>app.py</td>
+      </tr>
+      <tr>
+        <td><strong>Session Timeout</strong></td>
+        <td>30-minute inactivity timeout enforced server-side. Session cleared, redirected to login.</td>
+        <td>app.py, config.py</td>
+      </tr>
+      <tr>
+        <td><strong>Password Reset</strong></td>
+        <td>Forgot password flow with 24h token. Admin-created accounts force password change on first login.</td>
+        <td>models.py, auth.py, app.py, auth/*.html</td>
+      </tr>
+      <tr>
+        <td><strong>Sidebar Redesign</strong></td>
+        <td>Rounded nav items (8px), rgba hover overlays, active item green + drop shadow, HR dividers between sections.</td>
+        <td>base.html, main.css</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- CHAPTER 2 -->
+<div class="chapter">
+  <div class="chapter-eyebrow">Chapter 02</div>
+  <h1 class="chapter-title">Setup &amp; Running the App</h1>
+  <div class="chapter-intro">
+    The app runs locally on Windows with Python and Claude Code CLI. No cloud deployment or API key is required for standard operation. An optional Anthropic API key enables the SDK fallback path.
+  </div>
+
+  <h2>2.1 Requirements</h2>
+  <table>
+    <thead><tr><th>Tool</th><th>Version</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>Python</td><td>3.10+</td><td>Runtime</td></tr>
+      <tr><td>Claude Code CLI</td><td>Latest</td><td>AI summarisation via subprocess</td></tr>
+      <tr><td>Node.js</td><td>LTS</td><td>Required to install Claude Code CLI via npm</td></tr>
+      <tr><td>pip</td><td>Any</td><td>Python package installer</td></tr>
+    </tbody>
+  </table>
+
+  <h2>2.2 Install &amp; Start</h2>
+  <ol class="steps">
+    <li>Install Claude Code CLI: <code>npm install -g @anthropic-ai/claude-code</code> then run <code>claude</code> to authenticate.</li>
+    <li>Navigate to the project folder in PowerShell.</li>
+    <li>Install Python packages: <code>pip install -r requirements.txt</code></li>
+    <li>Start the server: <code>python app.py</code></li>
+    <li>Open browser at <strong>http://localhost:5001</strong></li>
+    <li>Register your first account — it automatically becomes superadmin.</li>
+  </ol>
+
+  <div class="callout note">
+    <strong>Note</strong>
+    If port 5001 is in use: <code>netstat -ano | findstr :5001</code> → get PID → <code>taskkill /PID &lt;pid&gt; /F</code>
+  </div>
+
+  <h2>2.3 Environment Configuration</h2>
+  <p>Create a <code>.env</code> file in the project root:</p>
+  <pre>SECRET_KEY=change-this-to-something-random-in-production
+PORT=5001
+DEBUG=false
+MAX_CONCURRENT_JOBS=10
+CLAUDE_TIMEOUT=120
+CLAUDE_FAST_TIMEOUT=60
+SESSION_LIFETIME_MINUTES=30
+API_RATE_LIMIT=20
+SEARCH_CACHE_TTL_HOURS=6
+# Optional — enables Claude SDK fallback when CLI is unavailable:
+ANTHROPIC_API_KEY=sk-ant-...</pre>
+
+  <div class="callout warn">
+    <strong>Important</strong>
+    Change <code>SECRET_KEY</code> before any deployment. The default value is insecure.
+  </div>
+</div>
+
+<!-- CHAPTER 3 -->
+<div class="chapter">
+  <div class="chapter-eyebrow">Chapter 03</div>
+  <h1 class="chapter-title">Core Features — User Guide</h1>
+  <div class="chapter-intro">
+    All features are accessible from the dashboard sidebar. Research, schedules, and the API all flow through the same job queue — status is tracked live via polling.
+  </div>
+
+  <h2>3.1 Research Pipeline</h2>
+  <p>Submit a topic from the dashboard. The pipeline runs in the background:</p>
+  <ol class="steps">
+    <li><strong>Cache check</strong> — if this topic was searched within the last 6 hours, results are reused from SQLite (no DuckDuckGo call).</li>
+    <li><strong>Web search</strong> — DuckDuckGo fetches top 10 results per query (up to 3 query variations). No API key required.</li>
+    <li><strong>Page fetch</strong> — top 5 English-language pages downloaded (10s timeout), HTML stripped, first 8000 characters kept. Blocked domains (.cn, .ru, .jp, baidu etc.) are skipped.</li>
+    <li><strong>Claude summarise</strong> — structured prompt sent to <code>claude -p</code> subprocess. Output: 600–1000 word summary in <code>## Overview</code> / <code>## Key Findings</code> format.</li>
+    <li><strong>SDK fallback</strong> — if CLI fails, retries via <code>anthropic</code> Python SDK (only if <code>ANTHROPIC_API_KEY</code> is set).</li>
+    <li><strong>Save</strong> — appends <code>## Sources</code> from confirmed HTTP-200 URLs (no hallucinated links). Saves to <code>research/&lt;user_id&gt;/YYYY-MM-DD_&lt;slug&gt;.md</code>. Indexed in FTS5.</li>
+  </ol>
+  <p>Frontend polls <code>/api/status/&lt;job_id&gt;</code> every 1.5 seconds. Spinner disappears when done, article appears in library.</p>
+
+  <h2>3.2 Job Search</h2>
+  <p>Enter a role and location (e.g. "Python developer remote"). The pipeline searches DuckDuckGo for job listings and sends results to Claude, which extracts structured JSON: <code>[{title, company, location, salary, url, tags}]</code>. Results render as styled cards with Apply buttons.</p>
+
+  <h2>3.3 Prompt &amp; Skill Generators</h2>
+  <div class="two-col">
+    <div class="col-card">
+      <h4>Prompt Generator</h4>
+      <p>Describe what you need. Claude returns an optimised prompt with token estimate and a comparison table showing how Claude vs GPT-4 handles each parameter.</p>
+    </div>
+    <div class="col-card">
+      <h4>Skill Generator</h4>
+      <p>Describe a workflow. Claude returns a complete Claude Code <code>.md</code> skill file with YAML frontmatter (triggers, steps, constraints, edge cases).</p>
+    </div>
+  </div>
+  <p>Both outputs are saved to the article library and searchable via FTS5.</p>
+
+  <h2>3.4 Scheduled Research</h2>
+  <p>Access via <strong>Sidebar → Schedules</strong>.</p>
+  <ul>
+    <li>Create a schedule: topic + frequency (daily or weekly)</li>
+    <li>Schedules store <code>next_run_at</code> (UTC) in the database</li>
+    <li>A daemon thread wakes every 60 seconds, queries for due schedules (<code>next_run_at &lt;= now</code>), fires them as research jobs, and advances <code>next_run_at</code> by the frequency delta</li>
+    <li>Pause/resume individual schedules without deleting them</li>
+    <li>Last run time and last job ID shown in the table</li>
+  </ul>
+  <div class="callout note">
+    <strong>Note</strong>
+    Schedules only fire while the server is running. If the server restarts, the next check will catch any overdue schedules immediately.
+  </div>
+
+  <h2>3.5 Article Comparison</h2>
+  <ol class="steps">
+    <li>On the dashboard, tick checkboxes on article cards (up to 4).</li>
+    <li>A floating compare bar appears at the bottom of the screen.</li>
+    <li>Click <strong>Compare Articles</strong> — navigates to <code>/compare?slugs=a,b,c,d</code>.</li>
+    <li>Articles render in a CSS grid, each column independently scrollable (max 70vh).</li>
+    <li>Claude generates a synthesis panel below the columns (requires CLI/SDK to be reachable; silently omitted if unavailable).</li>
+  </ol>
+
+  <h2>3.6 Public Article Sharing</h2>
+  <ol class="steps">
+    <li>Open any article.</li>
+    <li>Click <strong>Make Public</strong> — generates a unique share token (<code>secrets.token_urlsafe(24)</code>).</li>
+    <li>A <strong>Copy Link</strong> button appears showing the <code>/share/&lt;token&gt;</code> URL.</li>
+    <li>Anyone with that link can read the article — no account required.</li>
+    <li>Click <strong>Make Private</strong> to revoke access. Token is preserved so re-enabling restores the same link.</li>
+  </ol>
+
+  <h2>3.7 REST API &amp; API Keys</h2>
+  <p><strong>Generate a key:</strong> Sidebar → API Keys → enter a name → Generate Key. Copy immediately — the raw key is shown once only (stored as SHA-256 hash).</p>
+
+  <table>
+    <thead><tr><th>Endpoint</th><th>Method</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>/api/research</code></td><td>POST</td><td>Start a research job. Body: <code>{"topic": "..."}</code></td></tr>
+      <tr><td><code>/api/jobs/search</code></td><td>POST</td><td>Start a job search. Body: <code>{"query": "..."}</code></td></tr>
+      <tr><td><code>/api/status/&lt;job_id&gt;</code></td><td>GET</td><td>Poll job status. Returns status, message, result_slug.</td></tr>
+    </tbody>
+  </table>
+
+  <p>All API endpoints accept authentication via:</p>
+  <ul>
+    <li><code>X-API-Key: ra_...</code> header</li>
+    <li><code>Authorization: Bearer ra_...</code> header</li>
+  </ul>
+
+  <p><strong>Rate limit:</strong> 20 calls per user per hour (sliding window, in-memory). Exceeding returns HTTP 429 with a <code>Retry-After</code> header indicating seconds to wait.</p>
+
+  <pre>curl -X POST http://localhost:5001/api/research \
+  -H "X-API-Key: ra_your_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{"topic": "quantum computing 2025"}'
+
+# Response: {"job_id": 42, "status": "pending"}
+
+curl -H "X-API-Key: ra_your_key_here" \
+  http://localhost:5001/api/status/42
+
+# Response: {"status": "done", "result_slug": "2026-06-25_quantum-computing"}</pre>
+</div>
+
+<!-- CHAPTER 4 -->
+<div class="chapter">
+  <div class="chapter-eyebrow">Chapter 04</div>
+  <h1 class="chapter-title">Architecture &amp; Technical Reference</h1>
+  <div class="chapter-intro">
+    The app is a monolithic Flask application backed by a single SQLite file. Jobs run in a bounded ThreadPoolExecutor. A daemon scheduler thread handles recurring research. All Claude calls go through a single utility function with CLI-first, SDK-fallback design.
+  </div>
+
+  <h2>4.1 File Structure</h2>
+  <pre>ResearchAgent/
+├── app.py              ← Entry point. All URL routes (pages + API)
+├── auth.py             ← Auth decorators, CSRF, login/API rate limiting, session
+├── admin.py            ← Admin blueprint (/admin/*)
+├── background.py       ← ThreadPoolExecutor job queue + scheduler daemon
+├── config.py           ← Config class (reads from .env)
+├── models.py           ← SQLite layer — all 8 tables + helper functions
+├── research_agent.py   ← Research pipeline (search → cache → fetch → Claude → save)
+├── job_scraper.py      ← Job search pipeline (DDGS → Claude JSON extraction)
+├── prompt_generator.py ← Prompt &amp; skill generators
+├── utils.py            ← Claude subprocess (_run_cli) + SDK fallback (_run_sdk)
+├── requirements.txt
+├── .env                ← Environment config (create manually, not committed)
+│
+├── static/
+│   ├── css/main.css    ← Green/white brand, dark mode, sidebar, compare styles
+│   └── js/main.js      ← Theme toggle, spinner, polling, compare checkboxes, share
+│
+└── templates/
+    ├── base.html           ← Sidebar layout (rounded nav, HR dividers, footer)
+    ├── index.html          ← Landing page
+    ├── dashboard.html      ← Article grid, search, compare checkboxes, forms
+    ├── article.html        ← Article view, share toggle, download, delete
+    ├── compare.html        ← Side-by-side grid, synthesis panel
+    ├── share.html          ← Standalone public view (no auth, no sidebar)
+    ├── jobs.html           ← Job results cards
+    ├── auth/               ← login, register, change_password, forgot, reset
+    ├── settings/           ← api_keys.html
+    ├── schedules/          ← index.html (list + create form)
+    ├── admin/              ← index, users, user_detail, jobs
+    └── errors/             ← 403, 404</pre>
+
+  <h2>4.2 Database Schema</h2>
+  <table>
+    <thead><tr><th>Table</th><th>Key Columns</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>users</code></td>
+        <td>id, email, password_hash, role, is_active, must_change_password</td>
+        <td>User accounts and roles</td>
+      </tr>
+      <tr>
+        <td><code>research_jobs</code></td>
+        <td>id, user_id, job_type, topic, status, message, result_slug, payload</td>
+        <td>Every task — research, job search, prompt, skill</td>
+      </tr>
+      <tr>
+        <td><code>articles</code></td>
+        <td>id, user_id, slug, file_path, is_public, share_token</td>
+        <td>Article index and sharing state</td>
+      </tr>
+      <tr>
+        <td><code>articles_fts</code></td>
+        <td>rowid, title, topic (FTS5 virtual table)</td>
+        <td>Full-text search index</td>
+      </tr>
+      <tr>
+        <td><code>api_keys</code></td>
+        <td>id, user_id, name, key_hash, is_active, last_used_at</td>
+        <td>API authentication (SHA-256 hashed)</td>
+      </tr>
+      <tr>
+        <td><code>password_reset_tokens</code></td>
+        <td>id, user_id, token, expires_at, used</td>
+        <td>One-time password reset links (24h expiry)</td>
+      </tr>
+      <tr>
+        <td><code>search_cache</code></td>
+        <td>topic_key (PK), results_json, cached_at</td>
+        <td>DuckDuckGo result cache (6h TTL)</td>
+      </tr>
+      <tr>
+        <td><code>schedules</code></td>
+        <td>id, user_id, topic, frequency, is_active, next_run_at, last_run_at</td>
+        <td>Recurring research schedules</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>4.3 Claude Integration</h2>
+  <p><strong>Primary path:</strong> <code>subprocess.run([CLAUDE_CMD, "-p"], input=prompt, ...)</code></p>
+  <p><code>CLAUDE_CMD</code> is resolved at startup by searching the npm global bin directory (<code>~/AppData/Roaming/npm/</code>) before falling back to the system PATH. This handles the common Windows issue where <code>claude.cmd</code> is not on the default PATH.</p>
+  <p><strong>Fallback path:</strong> If the CLI subprocess raises any exception AND <code>ANTHROPIC_API_KEY</code> is set in the environment, the call is retried via the <code>anthropic</code> Python SDK using <code>claude-sonnet-4-6</code>.</p>
+  <p>Two timeout tiers: <code>call_claude()</code> uses 120s (research summarisation); <code>call_claude_fast()</code> uses 60s (prompt/skill generation).</p>
+
+  <h2>4.4 Background Jobs &amp; Scheduler</h2>
+  <div class="two-col">
+    <div class="col-card">
+      <h4>Job Queue</h4>
+      <p><code>ThreadPoolExecutor(max_workers=10)</code> — bounded concurrency. <code>enqueue()</code> creates a DB record then submits to the pool. On restart: stuck jobs reset to pending and resubmitted from their stored payload.</p>
+    </div>
+    <div class="col-card">
+      <h4>Scheduler</h4>
+      <p>Daemon thread sleeps 60s, queries <code>schedules WHERE next_run_at &lt;= now AND is_active = 1</code>, fires each as a research job, and advances <code>next_run_at</code>. Exceptions are swallowed so the thread never crashes.</p>
+    </div>
+  </div>
+
+  <h2>4.5 Security Implementation</h2>
+  <table>
+    <thead><tr><th>Control</th><th>Implementation</th></tr></thead>
+    <tbody>
+      <tr><td>Password storage</td><td>werkzeug <code>generate_password_hash</code> (PBKDF2-HMAC-SHA256)</td></tr>
+      <tr><td>CSRF protection</td><td>Per-session token in hidden form field, compared with <code>secrets.compare_digest</code></td></tr>
+      <tr><td>Login rate limiting</td><td>5 failed attempts per IP → 15-minute lockout (in-memory)</td></tr>
+      <tr><td>API rate limiting</td><td>Sliding 1-hour window per user_id (in-memory); 429 + Retry-After</td></tr>
+      <tr><td>Session timeout</td><td>30-minute inactivity; enforced server-side in <code>before_request</code></td></tr>
+      <tr><td>Security headers</td><td>CSP, X-Frame-Options: DENY, X-Content-Type-Options, Referrer-Policy (all responses)</td></tr>
+      <tr><td>API key storage</td><td>SHA-256 hash only; raw key shown once at creation via flash</td></tr>
+      <tr><td>Share tokens</td><td><code>secrets.token_urlsafe(24)</code> — 192 bits of entropy</td></tr>
+      <tr><td>Session cookie</td><td>HttpOnly, SameSite=Lax; Secure flag on in production (non-DEBUG)</td></tr>
+      <tr><td>SQL injection</td><td>All queries use parameterised statements; never string concatenation</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- CHAPTER 5 -->
+<div class="chapter">
+  <div class="chapter-eyebrow">Chapter 05</div>
+  <h1 class="chapter-title">Admin Panel</h1>
+  <div class="chapter-intro">
+    The admin panel is accessible to users with role <code>admin</code> or <code>superadmin</code>. Superadmins can promote/demote other users. Admins can view and manage all users and jobs.
+  </div>
+
+  <h2>Admin Routes</h2>
+  <table>
+    <thead><tr><th>Route</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><code>GET /admin/</code></td><td>Stats dashboard: total users, active users, article count, jobs by status, recent 10 jobs</td></tr>
+      <tr><td><code>GET /admin/users</code></td><td>Searchable user list with email filter. Per-row: toggle active, set role, delete.</td></tr>
+      <tr><td><code>GET /admin/users/&lt;id&gt;</code></td><td>User detail: profile info, all articles, all jobs, research file count</td></tr>
+      <tr><td><code>POST /admin/users/&lt;id&gt;/set-role</code></td><td>Change role to user / admin / superadmin</td></tr>
+      <tr><td><code>POST /admin/users/&lt;id&gt;/toggle</code></td><td>Flip is_active (suspend/unsuspend)</td></tr>
+      <tr><td><code>POST /admin/users/&lt;id&gt;/delete</code></td><td>Delete user + all their articles, jobs, and research files</td></tr>
+      <tr><td><code>GET /admin/jobs</code></td><td>All jobs, filterable by status / type / user email</td></tr>
+      <tr><td><code>POST /admin/jobs/&lt;id&gt;/delete</code></td><td>Delete a single non-done job</td></tr>
+      <tr><td><code>POST /admin/jobs/delete-errors</code></td><td>Bulk delete all jobs in error status</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout info">
+    <strong>Role hierarchy</strong>
+    superadmin &gt; admin &gt; user. A superadmin cannot be demoted or deleted by an admin. The first registered user is automatically promoted to superadmin.
+  </div>
+</div>
+
+<!-- CHAPTER 6 -->
+<div class="chapter">
+  <div class="chapter-eyebrow">Chapter 06</div>
+  <h1 class="chapter-title">Troubleshooting &amp; Common Errors</h1>
+
+  <table>
+    <thead><tr><th>Problem</th><th>Cause</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Research spins forever</td>
+        <td>Claude CLI timed out or unreachable</td>
+        <td>Check <code>claude -p</code> works in terminal. Set <code>ANTHROPIC_API_KEY</code> in .env to enable SDK fallback.</td>
+      </tr>
+      <tr>
+        <td><code>claude: command not found</code></td>
+        <td>CLI not on PATH or not installed</td>
+        <td><code>npm install -g @anthropic-ai/claude-code</code>. The app checks <code>~/AppData/Roaming/npm/</code> automatically.</td>
+      </tr>
+      <tr>
+        <td>Port 5001 in use</td>
+        <td>Previous server still running</td>
+        <td><code>netstat -ano | findstr :5001</code> → <code>taskkill /PID &lt;pid&gt; /F</code></td>
+      </tr>
+      <tr>
+        <td>Research errors mid-way</td>
+        <td>DDGS rate limited or pages blocked</td>
+        <td>Wait 30 seconds and retry. Search cache means second attempt is faster.</td>
+      </tr>
+      <tr>
+        <td>Schedules not firing</td>
+        <td>Server not running or thread crashed</td>
+        <td>Restart server. Scheduler starts fresh on each launch and will catch overdue schedules immediately.</td>
+      </tr>
+      <tr>
+        <td>API returns 401</td>
+        <td>Invalid or revoked API key</td>
+        <td>Regenerate a new key in Sidebar → API Keys.</td>
+      </tr>
+      <tr>
+        <td>API returns 429</td>
+        <td>Rate limit exceeded (20/hour)</td>
+        <td>Wait for <code>Retry-After</code> seconds. Increase <code>API_RATE_LIMIT</code> in .env if needed.</td>
+      </tr>
+      <tr>
+        <td>Share link returns 404</td>
+        <td>Article made private again</td>
+        <td>Re-enable sharing on the article. Same token will be reused, same URL still works.</td>
+      </tr>
+      <tr>
+        <td>Login locked out</td>
+        <td>5 failed attempts within 15 minutes</td>
+        <td>Wait 15 minutes. Admin can check server logs. Rate limit is per IP, resets on restart.</td>
+      </tr>
+      <tr>
+        <td><code>ModuleNotFoundError</code></td>
+        <td>Dependencies not installed</td>
+        <td><code>pip install -r requirements.txt</code></td>
+      </tr>
+      <tr>
+        <td>SQLite locked error</td>
+        <td>Concurrent write contention</td>
+        <td>All writes use <code>threading.Lock()</code>. If it persists, check for external DB tools holding the file open.</td>
+      </tr>
+      <tr>
+        <td>Session keeps expiring</td>
+        <td>30-minute inactivity timeout</td>
+        <td>Increase <code>SESSION_LIFETIME_MINUTES</code> in .env (e.g. 120 for 2 hours).</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- CHAPTER 7 -->
+<div class="chapter">
+  <div class="chapter-eyebrow">Chapter 07</div>
+  <h1 class="chapter-title">Deployment &amp; Production Notes</h1>
+  <div class="chapter-intro">
+    The app is production-ready for personal and small-team use as-is. For public-facing deployment, apply the following configuration and infrastructure changes.
+  </div>
+
+  <h2>Pre-Deployment Checklist</h2>
+  <ul>
+    <li>Set a strong random <code>SECRET_KEY</code> in <code>.env</code></li>
+    <li>Set <code>DEBUG=false</code> in <code>.env</code></li>
+    <li>Add HTTPS via a reverse proxy (nginx or Caddy) — the app will then set <code>Strict-Transport-Security</code> and <code>Secure</code> cookie flag automatically</li>
+    <li>Never commit <code>research_agent.db</code> or <code>.env</code> to version control</li>
+    <li>Back up <code>research_agent.db</code> and the <code>research/</code> folder regularly</li>
+    <li>Consider increasing <code>MAX_CONCURRENT_JOBS</code> for multi-user deployments</li>
+    <li>Set <code>API_RATE_LIMIT</code> appropriate to your user base</li>
+  </ul>
+
+  <h2>Running with Waitress (Production Server)</h2>
+  <p>The app already uses Waitress when launched via <code>python app.py</code>:</p>
+  <pre>from waitress import serve
+serve(app, host="0.0.0.0", port=Config.PORT)</pre>
+  <p>Waitress is a production-grade WSGI server — no Gunicorn or uWSGI needed for this scale.</p>
+
+  <h2>Nginx Reverse Proxy (Example)</h2>
+  <pre>server {
+    listen 443 ssl;
+    server_name yourdomain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:5001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+}</pre>
+
+  <h2>What Does Not Persist on Restart</h2>
+  <table>
+    <thead><tr><th>Data</th><th>Persistence</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Research jobs (pending/running)</td><td>DB (persists)</td><td>Requeued automatically on startup via <code>recover_pending_jobs()</code></td></tr>
+      <tr><td>Schedules</td><td>DB (persists)</td><td>Overdue schedules fire on next 60s tick after restart</td></tr>
+      <tr><td>Login rate limit counters</td><td>In-memory (resets)</td><td>Acceptable — counters reset on restart</td></tr>
+      <tr><td>API rate limit windows</td><td>In-memory (resets)</td><td>Acceptable — windows reset on restart</td></tr>
+      <tr><td>Search cache</td><td>DB (persists)</td><td>6h TTL; survives restarts</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout note">
+    <strong>Scaling note</strong>
+    For high-traffic multi-user deployments, replace the in-memory rate limiters with Redis-backed counters, and consider moving from SQLite to PostgreSQL. The DB layer is fully abstracted in <code>models.py</code> — only the connection and query syntax would need updating.
+  </div>
+
+  <div class="divider"></div>
+  <p style="text-align:center; color:#9ca3af; font-size:11px;">
+    Research Agent v2.0 · Delivered June 2026 · SCYKELTD AI Consultancy · Confidential
+  </p>
+</div>
+
+</body>
+</html>
