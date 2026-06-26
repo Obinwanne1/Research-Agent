@@ -29,6 +29,10 @@
         <span class="nav-icon">📎</span> Documents
       </a>
 
+      <a href="{{ url_for('workspace') }}" class="{{ 'active' if request.endpoint and 'workspace' in request.endpoint else '' }}">
+        <span class="nav-icon">🏢</span> Workspace
+      </a>
+
       <hr class="sidebar-divider">
       <span class="sidebar-section-label">Account</span>
       <a href="{{ url_for('settings_api_keys') }}" class="{{ 'active' if request.endpoint and 'api_keys' in request.endpoint else '' }}">

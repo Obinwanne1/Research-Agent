@@ -220,11 +220,13 @@ Output ONLY the markdown — no preamble, no closing remarks."""
             f.write(sources_md)
 
         word_count = len(summary.split())
+        workspace = models.get_workspace_for_user(user_id)
         models.create_article(
             user_id=user_id, job_id=job_id,
             title=topic.title(), slug=slug,
             file_path=os.path.join(str(user_id), f"{slug}.md"),
-            topic=topic, word_count=word_count
+            topic=topic, word_count=word_count,
+            workspace_id=workspace["id"] if workspace else None
         )
         models.update_job(job_id, status="done", message="Research complete!", result_slug=slug)
 

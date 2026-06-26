@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Workspace — Research Agent{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Workspace</h1>
+  <p>Team research space — articles are shared with all members automatically.</p>
+</div>
+
+{% if workspace %}
+<!-- Active workspace -->
+<div class="card" style="margin-bottom:24px;border-left:4px solid var(--accent);">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h2 style="margin:0 0 4px;">{{ workspace.name }}</h2>
+      <span style="font-size:0.8rem;color:var(--text-muted);">Your role: <strong style="color:var(--accent);">{{ workspace.role }}</strong></span>
+    </div>
+    <form method="POST" action="{{ url_for('workspace_leave') }}" onsubmit="return confirm('Leave this workspace? Your articles will remain but will no longer appear in the team library.')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-secondary btn-sm">Leave workspace</button>
+    </form>
+  </div>
+</div>
+
+<!-- Invite members (owner/admin only) -->
+{% if workspace.role in ('owner', 'admin') %}
+<div class="card" style="margin-bottom:24px;">
+  <h2>Invite Member</h2>
+  <form method="POST" action="{{ url_for('workspace_invite') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="input-row" style="gap:8px;">
+      <input type="email" name="email" class="form-control" placeholder="colleague@company.com" required autocomplete="off">
+      <button type="submit" class="btn btn-primary">Add Member</button>
+    </div>
+    <p style="font-size:0.78rem;color:var(--text-muted);margin:6px 0 0;">They must already have an account. New articles they research will appear in the team library.</p>
+  </form>
+</div>
+{% endif %}
+
+<!-- Members list -->
+<div class="page-header" style="margin-bottom:8px;">
+  <h2 style="font-size:1rem;font-weight:600;">Members ({{ members|length }})</h2>
+</div>
+<div class="table-wrap card" style="margin-bottom:24px;">
+  <table>
+    <thead>
+      <tr><th>Member</th><th>Role</th><th>Joined</th>{% if workspace.role in ('owner','admin') %}<th></th>{% endif %}</tr>
+    </thead>
+    <tbody>
+      {% for m in members %}
+      <tr>
+        <td>
+          <div style="font-weight:500;">{{ m.display_name or m.email }}</div>
+          {% if m.display_name %}<div style="font-size:0.78rem;color:var(--text-muted);">{{ m.email }}</div>{% endif %}
+        </td>
+        <td>
+          <span class="badge" style="background:{% if m.role == 'owner' %}var(--accent){% elif m.role == 'admin' %}#2563eb{% else %}#6b7280{% endif %};color:#fff;font-size:0.7rem;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:0.04em;">
+            {{ m.role }}
+          </span>
+        </td>
+        <td style="color:var(--text-muted);font-size:0.85rem;">{{ m.joined_at[:10] }}</td>
+        {% if workspace.role in ('owner', 'admin') %}
+        <td>
+          {% if m.role != 'owner' and m.user_id != session.user_id %}
+          <form method="POST" action="{{ url_for('workspace_remove_member', target_user_id=m.user_id) }}" style="display:inline;" onsubmit="return confirm('Remove {{ m.email }} from workspace?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-secondary">Remove</button>
+          </form>
+          {% endif %}
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Info callout -->
+<div class="card" style="border-color:var(--accent);background:var(--bg-sidebar);">
+  <p style="font-size:0.875rem;color:var(--text-muted);margin:0;">
+    <strong style="color:var(--accent);">Team library:</strong>
+    Any article researched by a member while in this workspace appears in the
+    <a href="{{ url_for('dashboard') }}" style="color:var(--accent);">Dashboard</a> team tab — visible to everyone in <strong>{{ workspace.name }}</strong>.
+  </p>
+</div>
+
+{% else %}
+<!-- No workspace — create one -->
+<div class="card" style="margin-bottom:24px;">
+  <h2>Create a Workspace</h2>
+  <p style="color:var(--text-muted);margin-bottom:16px;font-size:0.9rem;">
+    A workspace lets your team share a research library. All members see each other's articles in a shared Team tab on the dashboard.
+  </p>
+  <form method="POST" action="{{ url_for('workspace_create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="input-row" style="gap:8px;">
+      <input type="text" name="name" class="form-control" placeholder="e.g. Product Team, Legal Dept, AI Research" maxlength="80" required autocomplete="off">
+      <button type="submit" class="btn btn-primary">Create Workspace</button>
+    </div>
+  </form>
+</div>
+
+<div class="empty-state" style="margin-top:0;">
+  <div class="empty-icon">🏢</div>
+  <h3>No workspace yet</h3>
+  <p>Create one above and invite your colleagues. Research stays private until they join.</p>
+</div>
+{% endif %}
+{% endblock %}

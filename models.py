@@ -163,6 +163,37 @@ def init_db():
         """)
         conn.commit()
 
+        # Workspaces (team/department shared research spaces)
+        c.executescript("""
+            CREATE TABLE IF NOT EXISTS workspaces (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                name        TEXT    NOT NULL,
+                created_by  INTEGER NOT NULL,
+                created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+                FOREIGN KEY (created_by) REFERENCES users(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS workspace_members (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                workspace_id INTEGER NOT NULL,
+                user_id      INTEGER NOT NULL,
+                role         TEXT    NOT NULL DEFAULT 'member',
+                invited_by   INTEGER,
+                joined_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(workspace_id, user_id),
+                FOREIGN KEY (workspace_id) REFERENCES workspaces(id),
+                FOREIGN KEY (user_id)      REFERENCES users(id)
+            );
+        """)
+        conn.commit()
+
+        # Migrate: workspace_id on articles (team articles)
+        try:
+            c.execute("ALTER TABLE articles ADD COLUMN workspace_id INTEGER REFERENCES workspaces(id)")
+            conn.commit()
+        except Exception:
+            pass
+
         # User documents table (internal knowledge for research synthesis)
         c.execute("""
             CREATE TABLE IF NOT EXISTS user_documents (
@@ -462,13 +493,13 @@ def get_jobs_for_user(user_id, limit=50):
 
 # ── Article helpers ───────────────────────────────────────────────────────────
 
-def create_article(user_id, job_id, title, slug, file_path, topic, word_count):
+def create_article(user_id, job_id, title, slug, file_path, topic, word_count, workspace_id=None):
     with _db_lock:
         conn = get_conn()
         try:
             conn.execute(
-                "INSERT INTO articles (user_id, job_id, title, slug, file_path, topic, word_count) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (user_id, job_id, title, slug, file_path, topic, word_count)
+                "INSERT INTO articles (user_id, job_id, title, slug, file_path, topic, word_count, workspace_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (user_id, job_id, title, slug, file_path, topic, word_count, workspace_id)
             )
             conn.commit()
             article_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -730,6 +761,118 @@ def delete_schedule(schedule_id, user_id):
         )
         conn.commit()
         conn.close()
+
+
+# ── Workspace helpers ────────────────────────────────────────────────────────
+
+def create_workspace(name, created_by):
+    with _db_lock:
+        conn = get_conn()
+        conn.execute(
+            "INSERT INTO workspaces (name, created_by) VALUES (?, ?)",
+            (name, created_by)
+        )
+        conn.commit()
+        workspace_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.execute(
+            "INSERT INTO workspace_members (workspace_id, user_id, role, invited_by) VALUES (?, ?, 'owner', ?)",
+            (workspace_id, created_by, created_by)
+        )
+        conn.commit()
+        conn.close()
+        return workspace_id
+
+
+def get_workspace(workspace_id):
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM workspaces WHERE id = ?", (workspace_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_workspace_for_user(user_id):
+    """Return workspace dict with user's role, or None."""
+    conn = get_conn()
+    row = conn.execute("""
+        SELECT w.id, w.name, w.created_by, w.created_at, wm.role
+        FROM workspace_members wm
+        JOIN workspaces w ON w.id = wm.workspace_id
+        WHERE wm.user_id = ?
+        LIMIT 1
+    """, (user_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_workspace_members(workspace_id):
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT wm.user_id, wm.role, wm.joined_at,
+               u.email, u.display_name, u.is_active
+        FROM workspace_members wm
+        JOIN users u ON u.id = wm.user_id
+        WHERE wm.workspace_id = ?
+        ORDER BY wm.role DESC, wm.joined_at ASC
+    """, (workspace_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def add_workspace_member(workspace_id, user_id, role="member", invited_by=None):
+    with _db_lock:
+        conn = get_conn()
+        try:
+            conn.execute(
+                "INSERT INTO workspace_members (workspace_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)",
+                (workspace_id, user_id, role, invited_by)
+            )
+            conn.commit()
+            conn.close()
+            return True
+        except sqlite3.IntegrityError:
+            conn.close()
+            return False  # already a member
+
+
+def remove_workspace_member(workspace_id, user_id):
+    with _db_lock:
+        conn = get_conn()
+        conn.execute(
+            "DELETE FROM workspace_members WHERE workspace_id = ? AND user_id = ?",
+            (workspace_id, user_id)
+        )
+        conn.commit()
+        conn.close()
+
+
+def get_workspace_articles(workspace_id, limit=200):
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT a.*, u.display_name as author_name, u.email as author_email
+        FROM articles a
+        JOIN users u ON a.user_id = u.id
+        WHERE a.workspace_id = ?
+        ORDER BY a.created_at DESC
+        LIMIT ?
+    """, (workspace_id, limit)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_all_workspaces():
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT w.id, w.name, w.created_at,
+               u.email as owner_email,
+               COUNT(wm.user_id) as member_count
+        FROM workspaces w
+        JOIN users u ON u.id = w.created_by
+        LEFT JOIN workspace_members wm ON wm.workspace_id = w.id
+        GROUP BY w.id
+        ORDER BY w.created_at DESC
+    """).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 
 # ── Document helpers ─────────────────────────────────────────────────────────

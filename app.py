@@ -286,10 +286,17 @@ def reset_password(token):
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    articles = models.get_articles_for_user(session["user_id"])
-    jobs = models.get_jobs_for_user(session["user_id"], limit=10)
-    documents = models.get_documents_for_user(session["user_id"])
-    return render_template("dashboard.html", articles=articles, jobs=jobs, documents=documents)
+    user_id = session["user_id"]
+    articles = models.get_articles_for_user(user_id)
+    jobs = models.get_jobs_for_user(user_id, limit=10)
+    documents = models.get_documents_for_user(user_id)
+    workspace = models.get_workspace_for_user(user_id)
+    team_articles = models.get_workspace_articles(workspace["id"]) if workspace else []
+    return render_template(
+        "dashboard.html",
+        articles=articles, jobs=jobs, documents=documents,
+        workspace=workspace, team_articles=team_articles
+    )
 
 
 @app.route("/article/<slug>")
@@ -705,6 +712,113 @@ def schedules_delete(schedule_id):
     models.delete_schedule(schedule_id, session["user_id"])
     flash("Schedule deleted.", "success")
     return redirect(url_for("schedules"))
+
+
+# ── Workspace routes ──────────────────────────────────────────────────────────
+
+@app.route("/workspace")
+@login_required
+def workspace():
+    user_id = session["user_id"]
+    ws = models.get_workspace_for_user(user_id)
+    members = models.get_workspace_members(ws["id"]) if ws else []
+    return render_template("workspace.html", workspace=ws, members=members)
+
+
+@app.route("/workspace/create", methods=["POST"])
+@login_required
+def workspace_create():
+    if not validate_csrf():
+        flash("Invalid request.", "error")
+        return redirect(url_for("workspace"))
+    user_id = session["user_id"]
+    if models.get_workspace_for_user(user_id):
+        flash("You are already in a workspace. Leave it first to create a new one.", "error")
+        return redirect(url_for("workspace"))
+    name = (request.form.get("name") or "").strip()[:80]
+    if not name:
+        flash("Workspace name is required.", "error")
+        return redirect(url_for("workspace"))
+    models.create_workspace(name, user_id)
+    flash(f'Workspace "{name}" created. Invite your team below.', "success")
+    return redirect(url_for("workspace"))
+
+
+@app.route("/workspace/invite", methods=["POST"])
+@login_required
+def workspace_invite():
+    if not validate_csrf():
+        flash("Invalid request.", "error")
+        return redirect(url_for("workspace"))
+    user_id = session["user_id"]
+    ws = models.get_workspace_for_user(user_id)
+    if not ws:
+        flash("You are not in a workspace.", "error")
+        return redirect(url_for("workspace"))
+    if ws["role"] not in ("owner", "admin"):
+        flash("Only workspace owners and admins can invite members.", "error")
+        return redirect(url_for("workspace"))
+    email = (request.form.get("email") or "").strip().lower()
+    if not email:
+        flash("Email is required.", "error")
+        return redirect(url_for("workspace"))
+    target = models.get_user_by_email(email)
+    if not target:
+        flash(f'No account found for "{email}". They must register first.', "error")
+        return redirect(url_for("workspace"))
+    if target["id"] == user_id:
+        flash("You are already in the workspace.", "error")
+        return redirect(url_for("workspace"))
+    existing = models.get_workspace_for_user(target["id"])
+    if existing:
+        flash(f'{email} is already in another workspace.', "error")
+        return redirect(url_for("workspace"))
+    added = models.add_workspace_member(ws["id"], target["id"], role="member", invited_by=user_id)
+    if added:
+        flash(f'{email} added to workspace.', "success")
+    else:
+        flash(f'{email} is already a member.', "error")
+    return redirect(url_for("workspace"))
+
+
+@app.route("/workspace/remove/<int:target_user_id>", methods=["POST"])
+@login_required
+def workspace_remove_member(target_user_id):
+    if not validate_csrf():
+        flash("Invalid request.", "error")
+        return redirect(url_for("workspace"))
+    user_id = session["user_id"]
+    ws = models.get_workspace_for_user(user_id)
+    if not ws or ws["role"] not in ("owner", "admin"):
+        flash("Not authorised.", "error")
+        return redirect(url_for("workspace"))
+    if target_user_id == user_id:
+        flash("Use 'Leave workspace' to remove yourself.", "error")
+        return redirect(url_for("workspace"))
+    models.remove_workspace_member(ws["id"], target_user_id)
+    flash("Member removed.", "success")
+    return redirect(url_for("workspace"))
+
+
+@app.route("/workspace/leave", methods=["POST"])
+@login_required
+def workspace_leave():
+    if not validate_csrf():
+        flash("Invalid request.", "error")
+        return redirect(url_for("workspace"))
+    user_id = session["user_id"]
+    ws = models.get_workspace_for_user(user_id)
+    if not ws:
+        flash("You are not in a workspace.", "error")
+        return redirect(url_for("workspace"))
+    if ws["role"] == "owner":
+        members = models.get_workspace_members(ws["id"])
+        if len(members) > 1:
+            flash("Transfer ownership or remove all members before leaving as owner.", "error")
+            return redirect(url_for("workspace"))
+    models.remove_workspace_member(ws["id"], user_id)
+    flash("You have left the workspace.", "success")
+    return redirect(url_for("workspace"))
 
 
 # ── Document routes ───────────────────────────────────────────────────────────

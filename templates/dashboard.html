@@ -72,15 +72,34 @@
   </form>
 </div>
 
-<!-- Article cards -->
+<!-- Research library tabs -->
+{% if workspace %}
+<div style="display:flex;align-items:center;gap:0;margin-bottom:16px;border-bottom:2px solid var(--border);">
+  <button id="tab-mine" class="tab-btn tab-active" onclick="switchTab('mine')">
+    My Research <span class="tab-count">{{ articles|length }}</span>
+  </button>
+  <button id="tab-team" class="tab-btn" onclick="switchTab('team')">
+    🏢 {{ workspace.name }} <span class="tab-count">{{ team_articles|length }}</span>
+  </button>
+</div>
+<style>
+.tab-btn{background:none;border:none;padding:8px 16px;font-size:0.875rem;font-weight:500;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.15s;}
+.tab-btn:hover{color:var(--text);}
+.tab-active{color:var(--accent)!important;border-bottom-color:var(--accent)!important;}
+.tab-count{display:inline-flex;align-items:center;justify-content:center;background:var(--border);border-radius:999px;font-size:0.7rem;padding:0 6px;margin-left:4px;min-width:18px;}
+</style>
+{% endif %}
+
+<!-- Article cards (My Research) -->
+<div id="pane-mine">
 <div class="page-header" style="align-items:center;gap:12px;flex-wrap:wrap;">
-  <h2 style="font-size:1rem;font-weight:600;">Your Research (<span id="article-count">{{ articles|length }}</span>)</h2>
+  <h2 style="font-size:1rem;font-weight:600;">{% if not workspace %}Your Research {% endif %}(<span id="article-count">{{ articles|length }}</span>)</h2>
   {% if articles %}
   <div style="flex:1;min-width:180px;max-width:320px;">
     <input type="search" id="article-search" class="form-control" placeholder="Search articles…" autocomplete="off" style="font-size:0.85rem;padding:6px 10px;">
   </div>
   {% if articles|length >= 2 %}
-  <span style="font-size:0.78rem;color:var(--text-muted);">Select 2–4 articles to compare</span>
+  <span style="font-size:0.78rem;color:var(--text-muted);">Select 2–4 to compare</span>
   {% endif %}
   {% endif %}
 </div>
@@ -198,6 +217,46 @@
   <h3>No articles yet</h3>
   <p>Enter a topic above to research your first article.</p>
 </div>
+{% endif %}
+</div><!-- /pane-mine -->
+
+<!-- Team research pane -->
+{% if workspace %}
+<div id="pane-team" style="display:none;">
+  {% if team_articles %}
+  <div class="card-grid">
+    {% for art in team_articles %}
+    <div class="card article-card">
+      <div class="card-topic" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>{{ (art.topic or 'Research')[:60] }}</span>
+        <span style="font-size:0.7rem;color:var(--text-muted);background:var(--bg-sidebar);border-radius:999px;padding:2px 7px;white-space:nowrap;">{{ art.author_name or art.author_email }}</span>
+      </div>
+      <h3>{{ art.title }}</h3>
+      <div class="card-meta">
+        <span>{{ art.created_at[:10] }}</span>
+        {% if art.word_count %}<span class="meta-sep">·</span><span>{{ art.word_count }} words</span>{% endif %}
+      </div>
+      <a href="{{ url_for('article', slug=art.slug) }}" class="btn btn-primary btn-read">Read Article</a>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🏢</div>
+    <h3>No team articles yet</h3>
+    <p>Articles researched by workspace members will appear here automatically.</p>
+  </div>
+  {% endif %}
+</div><!-- /pane-team -->
+
+<script>
+function switchTab(tab) {
+  document.getElementById('pane-mine').style.display = tab === 'mine' ? '' : 'none';
+  document.getElementById('pane-team').style.display = tab === 'team' ? '' : 'none';
+  document.getElementById('tab-mine').classList.toggle('tab-active', tab === 'mine');
+  document.getElementById('tab-team').classList.toggle('tab-active', tab === 'team');
+}
+</script>
 {% endif %}
 
 <!-- Recent jobs (non-research) -->
