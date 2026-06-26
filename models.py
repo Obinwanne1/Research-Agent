@@ -163,6 +163,36 @@ def init_db():
         """)
         conn.commit()
 
+        # Webhooks (delivery layer — fires on research job completion)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS webhooks (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id       INTEGER NOT NULL,
+                name          TEXT    NOT NULL DEFAULT 'My Webhook',
+                url           TEXT    NOT NULL,
+                type          TEXT    NOT NULL DEFAULT 'generic',
+                is_active     INTEGER NOT NULL DEFAULT 1,
+                created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+                last_fired_at TEXT,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+        conn.commit()
+
+        # In-app notifications
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id    INTEGER NOT NULL,
+                message    TEXT    NOT NULL,
+                link       TEXT,
+                is_read    INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+        conn.commit()
+
         # Workspaces (team/department shared research spaces)
         c.executescript("""
             CREATE TABLE IF NOT EXISTS workspaces (
@@ -758,6 +788,105 @@ def delete_schedule(schedule_id, user_id):
         conn.execute(
             "DELETE FROM schedules WHERE id = ? AND user_id = ?",
             (schedule_id, user_id)
+        )
+        conn.commit()
+        conn.close()
+
+
+# ── Webhook helpers ──────────────────────────────────────────────────────────
+
+def create_webhook(user_id, name, url, hook_type="generic"):
+    with _db_lock:
+        conn = get_conn()
+        conn.execute(
+            "INSERT INTO webhooks (user_id, name, url, type) VALUES (?, ?, ?, ?)",
+            (user_id, name or "My Webhook", url, hook_type)
+        )
+        conn.commit()
+        conn.close()
+
+
+def get_webhooks_for_user(user_id):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT * FROM webhooks WHERE user_id = ? ORDER BY created_at DESC",
+        (user_id,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_active_webhooks_for_user(user_id):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT * FROM webhooks WHERE user_id = ? AND is_active = 1",
+        (user_id,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def delete_webhook(webhook_id, user_id):
+    with _db_lock:
+        conn = get_conn()
+        conn.execute(
+            "DELETE FROM webhooks WHERE id = ? AND user_id = ?",
+            (webhook_id, user_id)
+        )
+        conn.commit()
+        conn.close()
+
+
+def touch_webhook(webhook_id):
+    with _db_lock:
+        conn = get_conn()
+        conn.execute(
+            "UPDATE webhooks SET last_fired_at = datetime('now') WHERE id = ?",
+            (webhook_id,)
+        )
+        conn.commit()
+        conn.close()
+
+
+# ── Notification helpers ──────────────────────────────────────────────────────
+
+def create_notification(user_id, message, link=None):
+    with _db_lock:
+        conn = get_conn()
+        conn.execute(
+            "INSERT INTO notifications (user_id, message, link) VALUES (?, ?, ?)",
+            (user_id, message, link)
+        )
+        conn.commit()
+        conn.close()
+
+
+def get_notifications_for_user(user_id, limit=50):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+        (user_id, limit)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_unread_count(user_id):
+    conn = get_conn()
+    count = conn.execute(
+        "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0",
+        (user_id,)
+    ).fetchone()[0]
+    conn.close()
+    return count
+
+
+def mark_notifications_read(user_id):
+    with _db_lock:
+        conn = get_conn()
+        conn.execute(
+            "UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0",
+            (user_id,)
         )
         conn.commit()
         conn.close()

@@ -254,6 +254,26 @@ function updateSpinnerMsg(msg) {
   }
 })();
 
+// ── Notification badge ─────────────────────────────────────────────────────
+(function () {
+  const badge = document.getElementById('notif-badge');
+  if (!badge) return;
+  function fetchUnread() {
+    fetch('/api/notifications/unread')
+      .then(r => r.json())
+      .then(d => {
+        if (d.count > 0) {
+          badge.textContent = d.count > 9 ? '9+' : d.count;
+          badge.style.display = '';
+        } else {
+          badge.style.display = 'none';
+        }
+      }).catch(() => {});
+  }
+  fetchUnread();
+  setInterval(fetchUnread, 30000);
+})();
+
 // ── Toast notification ─────────────────────────────────────────────────────
 function showToast(msg, type) {
   const toast = document.createElement('div');

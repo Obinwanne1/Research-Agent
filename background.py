@@ -3,6 +3,7 @@ import threading
 import time as _time
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
+import requests as _requests
 import models
 from config import Config
 
@@ -71,11 +72,72 @@ def recover_pending_jobs():
         _executor.submit(_run_safe, handlers[job_type], payload, job["user_id"], job["id"])
 
 
+def _build_webhook_payload(hook_type, job, user, base_url=""):
+    topic = job.get("topic", "")
+    slug = job.get("result_slug", "")
+    article_url = f"{base_url}/article/{slug}" if slug else ""
+    ts = datetime.utcnow().isoformat()
+
+    if hook_type == "slack":
+        link = f"<{article_url}|Read Article>" if article_url else ""
+        return {"text": f":memo: Research complete: *{topic}*\n{link}".strip()}
+
+    if hook_type == "teams":
+        body = f"**Research complete:** {topic}"
+        if article_url:
+            body += f"\n\n[Read Article]({article_url})"
+        return {"type": "message", "text": body}
+
+    return {
+        "event": "research.complete",
+        "job_id": job["id"],
+        "job_type": job.get("job_type", "research"),
+        "topic": topic,
+        "slug": slug,
+        "article_url": article_url,
+        "user_email": user.get("email", ""),
+        "timestamp": ts,
+    }
+
+
+def _fire_webhooks(job_id, user_id):
+    try:
+        job = models.get_job(job_id)
+        if not job or job["status"] != "done":
+            return
+        if job.get("job_type") not in ("research", "prompt_gen", "skill_gen"):
+            return
+        user = models.get_user_by_id(user_id) or {}
+        webhooks = models.get_active_webhooks_for_user(user_id)
+        for wh in webhooks:
+            try:
+                data = _build_webhook_payload(wh["type"], job, user)
+                _requests.post(wh["url"], json=data, timeout=8)
+                models.touch_webhook(wh["id"])
+            except Exception:
+                pass  # webhook failure must never affect the job
+
+        # In-app notification
+        topic = job.get("topic", "")
+        slug = job.get("result_slug", "")
+        job_type = job.get("job_type", "research")
+        if job_type == "research" and slug:
+            msg = f"Research complete: {topic}"
+            models.create_notification(user_id, msg, link=f"/article/{slug}")
+        elif job_type in ("prompt_gen", "skill_gen") and slug:
+            label = "Prompt" if job_type == "prompt_gen" else "Skill"
+            models.create_notification(user_id, f"{label} generated: {topic}", link=f"/article/{slug}")
+    except Exception:
+        pass  # never crash a worker thread
+
+
 def _run_safe(handler, payload, user_id, job_id):
     try:
         handler(payload, user_id, job_id)
     except Exception as e:
         models.update_job(job_id, status="error", message=f"Unexpected error: {str(e)[:200]}")
+    finally:
+        _fire_webhooks(job_id, user_id)
 
 
 # ── Scheduler ──────────────────────────────────────────────────────────────────

@@ -714,6 +714,80 @@ def schedules_delete(schedule_id):
     return redirect(url_for("schedules"))
 
 
+# ── Notification routes ───────────────────────────────────────────────────────
+
+@app.route("/notifications")
+@login_required
+def notifications():
+    user_id = session["user_id"]
+    notifs = models.get_notifications_for_user(user_id)
+    models.mark_notifications_read(user_id)
+    return render_template("notifications.html", notifications=notifs)
+
+
+@app.route("/api/notifications/unread")
+@login_required
+def api_notifications_unread():
+    count = models.get_unread_count(session["user_id"])
+    return jsonify({"count": count})
+
+
+# ── Webhook settings ──────────────────────────────────────────────────────────
+
+_VALID_HOOK_TYPES = {"generic", "slack", "teams"}
+
+
+@app.route("/settings/webhooks")
+@login_required
+def settings_webhooks():
+    hooks = models.get_webhooks_for_user(session["user_id"])
+    return render_template("settings/webhooks.html", hooks=hooks)
+
+
+@app.route("/settings/webhooks", methods=["POST"])
+@login_required
+def settings_webhooks_create():
+    if not validate_csrf():
+        flash("Invalid request.", "error")
+        return redirect(url_for("settings_webhooks"))
+    name = (request.form.get("name") or "").strip()[:80] or "My Webhook"
+    url_val = (request.form.get("url") or "").strip()
+    hook_type = (request.form.get("type") or "generic").strip()
+    if not url_val or not url_val.startswith("https://"):
+        flash("Webhook URL must start with https://", "error")
+        return redirect(url_for("settings_webhooks"))
+    if hook_type not in _VALID_HOOK_TYPES:
+        hook_type = "generic"
+    models.create_webhook(session["user_id"], name, url_val, hook_type)
+    flash("Webhook added. It will fire when research completes.", "success")
+    return redirect(url_for("settings_webhooks"))
+
+
+@app.route("/settings/webhooks/<int:hook_id>/delete", methods=["POST"])
+@login_required
+def settings_webhooks_delete(hook_id):
+    if not validate_csrf():
+        flash("Invalid request.", "error")
+        return redirect(url_for("settings_webhooks"))
+    models.delete_webhook(hook_id, session["user_id"])
+    flash("Webhook removed.", "success")
+    return redirect(url_for("settings_webhooks"))
+
+
+# ── Weekly digest ─────────────────────────────────────────────────────────────
+
+@app.route("/digest")
+@login_required
+def digest():
+    user_id = session["user_id"]
+    days = min(int(request.args.get("days", 7)), 90)
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    workspace = models.get_workspace_for_user(user_id)
+    personal = [a for a in models.get_articles_for_user(user_id) if a["created_at"] >= cutoff]
+    team = [a for a in (models.get_workspace_articles(workspace["id"]) if workspace else []) if a["created_at"] >= cutoff]
+    return render_template("digest.html", personal=personal, team=team, days=days, workspace=workspace)
+
+
 # ── Workspace routes ──────────────────────────────────────────────────────────
 
 @app.route("/workspace")

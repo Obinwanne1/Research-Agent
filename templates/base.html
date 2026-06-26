@@ -33,10 +33,18 @@
         <span class="nav-icon">🏢</span> Workspace
       </a>
 
+      <a href="{{ url_for('digest') }}" class="{{ 'active' if request.endpoint == 'digest' else '' }}">
+        <span class="nav-icon">📋</span> Digest
+      </a>
+
       <hr class="sidebar-divider">
       <span class="sidebar-section-label">Account</span>
       <a href="{{ url_for('settings_api_keys') }}" class="{{ 'active' if request.endpoint and 'api_keys' in request.endpoint else '' }}">
         <span class="nav-icon">🔑</span> API Keys
+      </a>
+
+      <a href="{{ url_for('settings_webhooks') }}" class="{{ 'active' if request.endpoint and 'webhook' in request.endpoint else '' }}">
+        <span class="nav-icon">🔗</span> Webhooks
       </a>
       {% if session.get('role') in ('admin', 'superadmin') %}
       <a href="{{ url_for('admin.index') }}" class="{{ 'active' if request.blueprint == 'admin' else '' }}">
@@ -53,7 +61,12 @@
     </div>
     <div class="sidebar-footer">
       <div class="user-email">{{ session.get('email', '') }}</div>
-      <button id="theme-toggle" class="theme-toggle">☾ Dark</button>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+        <a href="{{ url_for('notifications') }}" id="notif-bell" title="Notifications" style="position:relative;text-decoration:none;font-size:1rem;color:var(--text-muted);">
+          🔔 <span id="notif-badge" style="display:none;position:absolute;top:-4px;right:-6px;background:#ef4444;color:#fff;border-radius:999px;font-size:0.6rem;padding:0 4px;min-width:14px;text-align:center;font-weight:700;"></span>
+        </a>
+        <button id="theme-toggle" class="theme-toggle">☾ Dark</button>
+      </div>
     </div>
   </nav>
 

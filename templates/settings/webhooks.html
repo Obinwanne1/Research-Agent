@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Webhooks — Research Agent{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Webhooks</h1>
+  <p>Get notified in Slack, Teams, or any HTTP endpoint when research completes.</p>
+</div>
+
+<!-- Add webhook form -->
+<div class="card" style="margin-bottom:24px;">
+  <h2>Add Webhook</h2>
+  <form method="POST" action="{{ url_for('settings_webhooks_create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <label style="font-size:0.875rem;font-weight:600;display:block;margin-bottom:4px;">Name</label>
+        <input type="text" name="name" class="form-control" placeholder="e.g. Slack #research" maxlength="80" autocomplete="off">
+      </div>
+      <div>
+        <label style="font-size:0.875rem;font-weight:600;display:block;margin-bottom:4px;">Type</label>
+        <select name="type" class="form-control">
+          <option value="slack">Slack Incoming Webhook</option>
+          <option value="teams">Microsoft Teams</option>
+          <option value="generic">Generic (JSON POST)</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:0.875rem;font-weight:600;display:block;margin-bottom:4px;">Webhook URL <span style="color:#ef4444;">*</span></label>
+      <input type="url" name="url" class="form-control" placeholder="https://hooks.slack.com/services/..." required>
+      <p style="font-size:0.75rem;color:var(--text-muted);margin:4px 0 0;">Must start with https://</p>
+    </div>
+    <button type="submit" class="btn btn-primary">Add Webhook</button>
+  </form>
+</div>
+
+<!-- Instructions -->
+<div class="card" style="margin-bottom:24px;border-color:var(--accent);background:var(--bg-sidebar);">
+  <h3 style="color:var(--accent);margin-bottom:8px;">Setup guides</h3>
+  <ul style="margin:0 0 0 16px;color:var(--text-muted);font-size:0.875rem;line-height:1.8;">
+    <li><strong>Slack:</strong> Apps → Incoming Webhooks → Add New Webhook to Workspace → copy URL</li>
+    <li><strong>Teams:</strong> Channel → ⋯ → Connectors → Incoming Webhook → create → copy URL</li>
+    <li><strong>Generic:</strong> any POST endpoint — receives JSON with event, topic, article_url, timestamp</li>
+    <li><strong>n8n / Zapier:</strong> use Generic type with your workflow's webhook trigger URL</li>
+  </ul>
+</div>
+
+<!-- Active webhooks -->
+{% if hooks %}
+<div class="page-header" style="margin-bottom:8px;">
+  <h2 style="font-size:1rem;font-weight:600;">Your Webhooks ({{ hooks|length }})</h2>
+</div>
+<div class="table-wrap card">
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Type</th><th>URL</th><th>Last fired</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for h in hooks %}
+      <tr>
+        <td style="font-weight:500;">{{ h.name }}</td>
+        <td>
+          <span class="badge" style="background:{% if h.type == 'slack' %}#4A154B{% elif h.type == 'teams' %}#6264A7{% else %}#374151{% endif %};color:#fff;font-size:0.7rem;padding:2px 8px;border-radius:999px;text-transform:uppercase;">
+            {{ h.type }}
+          </span>
+        </td>
+        <td style="font-size:0.78rem;color:var(--text-muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ h.url }}">{{ h.url[:60] }}{% if h.url|length > 60 %}…{% endif %}</td>
+        <td style="font-size:0.8rem;color:var(--text-muted);">{{ h.last_fired_at[:16].replace('T',' ') if h.last_fired_at else '—' }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('settings_webhooks_delete', hook_id=h.id) }}" style="display:inline;" onsubmit="return confirm('Delete this webhook?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-secondary">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">🔗</div>
+  <h3>No webhooks yet</h3>
+  <p>Add one above to start receiving notifications when research completes.</p>
+</div>
+{% endif %}
+{% endblock %}
