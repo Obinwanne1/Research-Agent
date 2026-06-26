@@ -25,6 +25,10 @@
         <span class="nav-icon">⏱</span> Schedules
       </a>
 
+      <a href="{{ url_for('documents') }}" class="{{ 'active' if request.endpoint == 'documents' else '' }}">
+        <span class="nav-icon">📎</span> Documents
+      </a>
+
       <hr class="sidebar-divider">
       <span class="sidebar-section-label">Account</span>
       <a href="{{ url_for('settings_api_keys') }}" class="{{ 'active' if request.endpoint and 'api_keys' in request.endpoint else '' }}">

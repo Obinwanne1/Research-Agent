@@ -9,6 +9,7 @@ from flask import (
     Flask, render_template, request, redirect,
     url_for, session, flash, jsonify, abort, send_file, g, Response, stream_with_context
 )
+from werkzeug.utils import secure_filename
 from config import Config
 import models
 from auth import (
@@ -25,6 +26,7 @@ app.permanent_session_lifetime = timedelta(minutes=Config.SESSION_LIFETIME_MINUT
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = not Config.DEBUG  # HTTPS only in production
+app.config["MAX_CONTENT_LENGTH"] = Config.MAX_DOC_SIZE_MB * 1024 * 1024
 app.register_blueprint(admin_bp)
 
 # Expose csrf_token() in all templates
@@ -286,7 +288,8 @@ def reset_password(token):
 def dashboard():
     articles = models.get_articles_for_user(session["user_id"])
     jobs = models.get_jobs_for_user(session["user_id"], limit=10)
-    return render_template("dashboard.html", articles=articles, jobs=jobs)
+    documents = models.get_documents_for_user(session["user_id"])
+    return render_template("dashboard.html", articles=articles, jobs=jobs, documents=documents)
 
 
 @app.route("/article/<slug>")
@@ -364,7 +367,25 @@ def api_research():
         return jsonify({"error": "topic is required"}), 400
     if len(topic) > _MAX_INPUT:
         return jsonify({"error": f"topic must be {_MAX_INPUT} characters or fewer"}), 400
-    job_id = background.enqueue("research", {"topic": topic}, g.user_id)
+
+    doc_context = ""
+    doc_ids = data.get("doc_ids") or []
+    if doc_ids and isinstance(doc_ids, list):
+        safe_ids = []
+        for d in doc_ids[:5]:
+            try:
+                safe_ids.append(int(d))
+            except (ValueError, TypeError):
+                pass
+        if safe_ids:
+            docs = models.get_documents_by_ids(safe_ids, g.user_id)
+            if docs:
+                doc_context = "\n\n---\n\n".join(
+                    f"[Internal Document: {doc['name']}]\n{doc['content'][:Config.MAX_DOC_CHARS]}"
+                    for doc in docs
+                )
+
+    job_id = background.enqueue("research", {"topic": topic, "doc_context": doc_context}, g.user_id)
     return jsonify({"job_id": job_id})
 
 
@@ -686,7 +707,99 @@ def schedules_delete(schedule_id):
     return redirect(url_for("schedules"))
 
 
+# ── Document routes ───────────────────────────────────────────────────────────
+
+@app.route("/documents")
+@login_required
+def documents():
+    docs = models.get_documents_for_user(session["user_id"])
+    return render_template("documents.html", docs=docs, max_doc_mb=Config.MAX_DOC_SIZE_MB)
+
+
+@app.route("/documents/upload", methods=["POST"])
+@login_required
+def documents_upload():
+    if not validate_csrf():
+        flash("Invalid request.", "error")
+        return redirect(url_for("documents"))
+
+    uploaded_file = request.files.get("document_file")
+    pasted_text = (request.form.get("document_text") or "").strip()
+    custom_name = (request.form.get("document_name") or "").strip()[:120]
+
+    content = ""
+    name = ""
+    file_type = "text"
+
+    if uploaded_file and uploaded_file.filename:
+        filename = secure_filename(uploaded_file.filename)
+        ext = os.path.splitext(filename)[1].lower()
+        if ext == ".pdf":
+            file_type = "pdf"
+            try:
+                from pypdf import PdfReader
+                import io as _io
+                raw = uploaded_file.read()
+                reader = PdfReader(_io.BytesIO(raw))
+                parts = [page.extract_text() or "" for page in reader.pages]
+                content = re.sub(r'\s+', ' ', " ".join(parts)).strip()
+            except Exception as exc:
+                flash(f"Could not read PDF: {str(exc)[:120]}", "error")
+                return redirect(url_for("documents"))
+        elif ext == ".txt":
+            try:
+                content = uploaded_file.read().decode("utf-8", errors="replace").strip()
+            except Exception:
+                flash("Could not read text file.", "error")
+                return redirect(url_for("documents"))
+        else:
+            flash("Only PDF and .txt files are supported.", "error")
+            return redirect(url_for("documents"))
+        name = custom_name or filename
+
+    elif pasted_text:
+        content = pasted_text
+        name = custom_name or "Pasted text"
+
+    else:
+        flash("Please upload a file or paste text.", "error")
+        return redirect(url_for("documents"))
+
+    if not content.strip():
+        flash("Document appears to be empty or could not be parsed.", "error")
+        return redirect(url_for("documents"))
+
+    content = content[:Config.MAX_DOC_CHARS]
+    models.create_document(session["user_id"], name, file_type, content)
+    flash(f'Document "{name}" added ({len(content):,} characters extracted).', "success")
+    return redirect(url_for("documents"))
+
+
+@app.route("/documents/<int:doc_id>/delete", methods=["POST"])
+@login_required
+def documents_delete(doc_id):
+    if not validate_csrf():
+        flash("Invalid request.", "error")
+        return redirect(url_for("documents"))
+    models.delete_document(doc_id, session["user_id"])
+    flash("Document removed.", "success")
+    return redirect(url_for("documents"))
+
+
+@app.route("/api/documents")
+@login_required
+def api_documents_list():
+    docs = models.get_documents_for_user(session["user_id"])
+    return jsonify(docs)
+
+
 # ── Error handlers ────────────────────────────────────────────────────────────
+
+@app.errorhandler(413)
+def too_large(e):
+    flash(f"File too large. Maximum is {Config.MAX_DOC_SIZE_MB} MB.", "error")
+    return redirect(url_for("documents"))
+
 
 @app.errorhandler(403)
 def forbidden(e):

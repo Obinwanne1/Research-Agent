@@ -14,3 +14,5 @@ class Config:
     SESSION_LIFETIME_MINUTES = int(os.environ.get("SESSION_LIFETIME_MINUTES", "30"))
     API_RATE_LIMIT = int(os.environ.get("API_RATE_LIMIT", "20"))  # max research/job_search calls per user per hour
     SEARCH_CACHE_TTL_HOURS = int(os.environ.get("SEARCH_CACHE_TTL_HOURS", "6"))
+    MAX_DOC_SIZE_MB = int(os.environ.get("MAX_DOC_SIZE_MB", "10"))
+    MAX_DOC_CHARS = int(os.environ.get("MAX_DOC_CHARS", "15000"))

@@ -149,7 +149,10 @@ def run_research_task(payload, user_id, job_id):
             return
 
         # Step 4: Summarize with Claude (strict grounding + citations)
-        models.update_job(job_id, message=f"Summarising {len(pages)} sources with Claude...")
+        doc_context = payload.get("doc_context", "")
+        has_docs = bool(doc_context and doc_context.strip())
+        msg = f"Synthesising {len(pages)} web sources" + (" + internal documents" if has_docs else "") + " with Claude..."
+        models.update_job(job_id, message=msg)
 
         numbered_sources = "\n\n".join(
             f"[Source {i+1}] URL: {p['url']}\nTITLE: {p['title']}\nCONTENT:\n{p['content']}"
@@ -167,6 +170,14 @@ def run_research_task(payload, user_id, job_id):
             count_instruction = ""
             word_guide = "600–1000"
 
+        internal_section = ""
+        if has_docs:
+            internal_section = (
+                "\n\nINTERNAL DOCUMENTS (provided by the user — treat as primary authoritative sources):\n"
+                f"{doc_context}\n"
+                "\nWhen internal documents are relevant, prioritise them and cite as [Internal Document].\n"
+            )
+
         prompt = f"""Research topic: {topic}
 
 GROUNDING RULE: Use ONLY facts explicitly stated in the source content below.
@@ -174,7 +185,7 @@ Do NOT add external knowledge, statistics, dates, names, or claims not present i
 If a source does not support a claim, omit it entirely.
 For each key fact or statistic, add an inline citation: [Source 1], [Source 2], etc.
 Sources are numbered in the order they appear below.
-
+{internal_section}
 {numbered_sources}
 
 Write a detailed research summary in plain English ({word_guide} words).{count_instruction}

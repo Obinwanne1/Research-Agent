@@ -163,6 +163,21 @@ def init_db():
         """)
         conn.commit()
 
+        # User documents table (internal knowledge for research synthesis)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS user_documents (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id     INTEGER NOT NULL,
+                name        TEXT    NOT NULL,
+                file_type   TEXT    NOT NULL DEFAULT 'text',
+                content     TEXT    NOT NULL,
+                char_count  INTEGER,
+                created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+        conn.commit()
+
         # Migrate: promote oldest admin to superadmin if no superadmin exists
         has_superadmin = conn.execute(
             "SELECT COUNT(*) FROM users WHERE role = 'superadmin'"
@@ -712,6 +727,63 @@ def delete_schedule(schedule_id, user_id):
         conn.execute(
             "DELETE FROM schedules WHERE id = ? AND user_id = ?",
             (schedule_id, user_id)
+        )
+        conn.commit()
+        conn.close()
+
+
+# ── Document helpers ─────────────────────────────────────────────────────────
+
+def create_document(user_id, name, file_type, content):
+    with _db_lock:
+        conn = get_conn()
+        conn.execute(
+            "INSERT INTO user_documents (user_id, name, file_type, content, char_count) VALUES (?, ?, ?, ?, ?)",
+            (user_id, name, file_type, content, len(content))
+        )
+        conn.commit()
+        doc_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.close()
+        return doc_id
+
+
+def get_documents_for_user(user_id):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT id, name, file_type, char_count, created_at FROM user_documents WHERE user_id = ? ORDER BY created_at DESC",
+        (user_id,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_document(doc_id, user_id):
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT * FROM user_documents WHERE id = ? AND user_id = ?", (doc_id, user_id)
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_documents_by_ids(doc_ids, user_id):
+    if not doc_ids:
+        return []
+    placeholders = ",".join("?" * len(doc_ids))
+    conn = get_conn()
+    rows = conn.execute(
+        f"SELECT * FROM user_documents WHERE id IN ({placeholders}) AND user_id = ?",
+        list(doc_ids) + [user_id]
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def delete_document(doc_id, user_id):
+    with _db_lock:
+        conn = get_conn()
+        conn.execute(
+            "DELETE FROM user_documents WHERE id = ? AND user_id = ?", (doc_id, user_id)
         )
         conn.commit()
         conn.close()

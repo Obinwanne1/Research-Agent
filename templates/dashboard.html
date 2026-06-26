@@ -16,6 +16,30 @@
       <button type="submit" class="btn btn-primary">Research</button>
     </div>
   </form>
+  <!-- Internal document selector -->
+  {% if documents %}
+  <div style="margin-top:10px;">
+    <button type="button" id="doc-attach-btn" class="btn btn-secondary btn-sm" style="font-size:0.8rem;">
+      📎 Include documents <span id="doc-attach-count" style="color:var(--accent);font-weight:700;"></span>
+    </button>
+    <div id="doc-attach-list" style="display:none;margin-top:10px;background:var(--bg-sidebar);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+      <p style="font-size:0.78rem;color:var(--text-muted);margin:0 0 8px;">Claude will synthesise these with web results:</p>
+      {% for doc in documents %}
+      <label style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;font-size:0.875rem;border-bottom:1px solid var(--border);">
+        <input type="checkbox" class="doc-include-cb" value="{{ doc.id }}" style="accent-color:var(--accent);width:15px;height:15px;flex-shrink:0;">
+        <span style="flex:1;font-weight:500;">{{ doc.name }}</span>
+        <span style="font-size:0.72rem;color:var(--text-muted);white-space:nowrap;">{{ "{:,}".format(doc.char_count or 0) }} chars</span>
+      </label>
+      {% endfor %}
+      <a href="{{ url_for('documents') }}" style="font-size:0.78rem;color:var(--accent);text-decoration:none;margin-top:8px;display:inline-block;">+ Manage documents</a>
+    </div>
+  </div>
+  {% else %}
+  <div style="margin-top:10px;">
+    <a href="{{ url_for('documents') }}" class="btn btn-secondary btn-sm" style="font-size:0.8rem;">📎 Add internal documents</a>
+    <span style="font-size:0.75rem;color:var(--text-muted);margin-left:8px;">Include your own PDFs or notes in research</span>
+  </div>
+  {% endif %}
 </div>
 
 <!-- Prompt / Skill Generator -->

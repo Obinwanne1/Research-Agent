@@ -30,7 +30,28 @@ document.addEventListener('DOMContentLoaded', function () {
       e.preventDefault();
       const topic = document.getElementById('research-input').value.trim();
       if (!topic) return;
-      await startJob('research', { topic }, 'research');
+      const docIds = Array.from(document.querySelectorAll('.doc-include-cb:checked'))
+        .map(cb => parseInt(cb.value, 10))
+        .filter(id => !isNaN(id));
+      await startJob('research', { topic, doc_ids: docIds }, 'research');
+    });
+  }
+
+  // ── Document attach toggle ────────────────────────────────────────────────
+  const docBtn = document.getElementById('doc-attach-btn');
+  const docList = document.getElementById('doc-attach-list');
+  const docCount = document.getElementById('doc-attach-count');
+  if (docBtn && docList) {
+    docBtn.addEventListener('click', function () {
+      const open = docList.style.display !== 'none';
+      docList.style.display = open ? 'none' : '';
+      docBtn.style.borderColor = open ? '' : 'var(--accent)';
+    });
+    document.addEventListener('change', function (e) {
+      if (e.target.classList.contains('doc-include-cb') && docCount) {
+        const n = document.querySelectorAll('.doc-include-cb:checked').length;
+        docCount.textContent = n > 0 ? '(' + n + ')' : '';
+      }
     });
   }
 
