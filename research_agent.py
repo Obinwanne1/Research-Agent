@@ -99,6 +99,60 @@ def fetch_pages_parallel(search_results, max_pages=5):
     return fetched
 
 
+# ── Topic category + staleness ───────────────────────────────────────────────
+
+_CATEGORY_MAP = [
+    ("fast",   14,  ["ai", "artificial intelligence", "crypto", "bitcoin", "ethereum",
+                     "market", "stock", "geopolit", "ukraine", "war", "election",
+                     "breaking", "latest", "2024", "2025", "2026"]),
+    ("medium", 30,  ["technology", "tech", "startup", "company", "business", "product",
+                     "software", "regulation", "policy", "law", "drug", "clinical"]),
+    ("slow",   60,  ["science", "research", "study", "health", "medicine", "biology",
+                     "physics", "climate", "environment", "psychology"]),
+    ("stable", 90,  ["history", "philosophy", "mathematics", "economics", "theory",
+                     "fundamental", "how to", "guide", "introduction", "overview"]),
+]
+
+def detect_topic_category(topic):
+    """Return (category_name, staleness_days) based on keyword match."""
+    lower = topic.lower()
+    for cat, days, keywords in _CATEGORY_MAP:
+        if any(kw in lower for kw in keywords):
+            return cat, days
+    return "medium", 30
+
+
+# ── Confidence grader ────────────────────────────────────────────────────────
+
+def grade_confidence(topic, summary, source_count):
+    """Ask Claude to score research confidence 1-10 and suggest alternative queries."""
+    prompt = (
+        f'Research topic: {topic}\n'
+        f'Sources used: {source_count}\n\n'
+        f'Summary excerpt (first 800 chars):\n{summary[:800]}\n\n'
+        'Rate the research confidence on a scale of 1-10:\n'
+        '10 = comprehensive, multiple high-quality sources, no significant gaps\n'
+        '7-9 = good coverage, minor gaps\n'
+        '5-6 = partial coverage, some key areas missing\n'
+        '1-4 = poor coverage, limited or low-quality sources\n\n'
+        'Also provide 2 alternative search queries that would fill gaps in coverage.\n'
+        'Return ONLY a JSON object, no explanation:\n'
+        '{"confidence": <1-10>, "reason": "<10-15 words>", "alternative_queries": ["query1", "query2"]}'
+    )
+    try:
+        raw = call_claude_fast(prompt)
+        raw = re.sub(r"^```[a-z]*\n?", "", raw.strip())
+        raw = re.sub(r"\n?```$", "", raw.strip())
+        data = json.loads(raw)
+        return {
+            "confidence": max(1, min(10, int(data.get("confidence", 5)))),
+            "reason": str(data.get("reason", ""))[:120],
+            "alternative_queries": [str(q) for q in data.get("alternative_queries", [])[:2]],
+        }
+    except Exception:
+        return {"confidence": 5, "reason": "Could not grade", "alternative_queries": []}
+
+
 # ── Slug generator ────────────────────────────────────────────────────────────
 
 def make_slug(topic):
@@ -200,6 +254,51 @@ Output ONLY the markdown — no preamble, no closing remarks."""
         summary = call_claude(prompt)
         summary = re.sub(r'\n## Sources.*', '', summary, flags=re.DOTALL).strip()
 
+        # Step 5: Grade confidence — re-run if < 7
+        models.update_job(job_id, message="Grading source quality...")
+        grade = grade_confidence(topic, summary, len(pages))
+        confidence = grade["confidence"]
+        iteration_count = 1
+
+        if confidence < 7 and grade["alternative_queries"]:
+            models.update_job(job_id, message=f"Confidence {confidence}/10 — fetching additional sources...")
+            extra_results = search_all_queries(grade["alternative_queries"])
+            existing_urls = {p["url"] for p in pages}
+            extra_results = [r for r in extra_results if r["url"] not in existing_urls]
+            extra_pages = fetch_pages_parallel(extra_results, max_pages=4)
+            if extra_pages:
+                pages = pages + extra_pages
+                iteration_count = 2
+                models.update_job(job_id, message=f"Re-synthesising with {len(pages)} total sources...")
+
+                numbered_sources = "\n\n".join(
+                    f"[Source {i+1}] URL: {p['url']}\nTITLE: {p['title']}\nCONTENT:\n{p['content']}"
+                    for i, p in enumerate(pages)
+                )
+                prompt2 = f"""Research topic: {topic}
+
+GROUNDING RULE: Use ONLY facts explicitly stated in the source content below.
+Do NOT add external knowledge, statistics, dates, names, or claims not present in these sources.
+For each key fact or statistic, add an inline citation: [Source 1], [Source 2], etc.
+{internal_section}
+{numbered_sources}
+
+Write a detailed research summary in plain English ({word_guide} words).{count_instruction}
+Structure:
+## Overview
+## Key Findings
+(use ### for each individual item or finding)
+
+Do NOT include a Sources section — it will be appended automatically.
+Output ONLY the markdown — no preamble, no closing remarks."""
+
+                summary = call_claude(prompt2)
+                summary = re.sub(r'\n## Sources.*', '', summary, flags=re.DOTALL).strip()
+
+                # Re-grade after second pass (cap — never loop again)
+                grade2 = grade_confidence(topic, summary, len(pages))
+                confidence = grade2["confidence"]
+
         # Verified sources (all returned HTTP 200)
         source_items = "\n".join(
             f'<li><a href="{p["url"]}" target="_blank" rel="noopener noreferrer">{p["title"] or p["url"]}</a></li>'
@@ -207,7 +306,7 @@ Output ONLY the markdown — no preamble, no closing remarks."""
         )
         sources_md = f"\n\n## Sources\n<ul>\n{source_items}\n</ul>"
 
-        # Step 5: Save
+        # Step 6: Save
         models.update_job(job_id, message="Saving article...")
         slug = make_slug(topic)
         user_dir = os.path.join(Config.RESEARCH_BASE_DIR, str(user_id))
@@ -220,15 +319,32 @@ Output ONLY the markdown — no preamble, no closing remarks."""
             f.write(sources_md)
 
         word_count = len(summary.split())
+        topic_category, staleness_days = detect_topic_category(topic)
         workspace = models.get_workspace_for_user(user_id)
+        parent_id = payload.get("parent_article_id")
         models.create_article(
             user_id=user_id, job_id=job_id,
             title=topic.title(), slug=slug,
             file_path=os.path.join(str(user_id), f"{slug}.md"),
             topic=topic, word_count=word_count,
-            workspace_id=workspace["id"] if workspace else None
+            workspace_id=workspace["id"] if workspace else None,
+            confidence_score=confidence,
+            source_count=len(pages),
+            iteration_count=iteration_count,
+            topic_category=topic_category,
+            staleness_days=staleness_days,
+            parent_article_id=parent_id,
         )
         models.update_job(job_id, status="done", message="Research complete!", result_slug=slug)
+
+        # Embed article for semantic search (Feature 6) — non-blocking best-effort
+        try:
+            import embeddings as _emb
+            art = models.get_article(slug, user_id)
+            if art:
+                _emb.embed_and_store(art["id"], f"{topic} {summary[:600]}")
+        except Exception:
+            pass  # embedding is non-critical
 
     except subprocess.TimeoutExpired:
         models.update_job(job_id, status="error", message="Claude CLI timed out. Try again.")

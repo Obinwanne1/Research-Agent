@@ -205,7 +205,6 @@ function updateSpinnerMsg(msg) {
     if (!grid) return;
 
     if (!q) {
-      // Restore all cards
       Array.from(grid.children).forEach(c => c.style.display = '');
       if (emptySearch) emptySearch.style.display = 'none';
       grid.style.display = '';
@@ -214,8 +213,17 @@ function updateSpinnerMsg(msg) {
     }
 
     try {
-      const resp = await fetch('/api/search/articles?q=' + encodeURIComponent(q));
-      const articles = await resp.json();
+      // Try semantic search first; fall back to keyword FTS
+      let articles = null;
+      try {
+        const sr = await fetch('/api/search/semantic?q=' + encodeURIComponent(q));
+        const sd = await sr.json();
+        if (sd && sd.length > 0) articles = sd;
+      } catch (_) {}
+      if (!articles) {
+        const resp = await fetch('/api/search/articles?q=' + encodeURIComponent(q));
+        articles = await resp.json();
+      }
       renderArticleCards(articles, grid, emptySearch, countEl);
     } catch (err) {
       // On network error leave current view unchanged

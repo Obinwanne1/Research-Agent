@@ -117,6 +117,9 @@
     <div class="card-meta">
       <span>{{ art.created_at[:10] }}</span>
       {% if art.word_count %}<span class="meta-sep">·</span><span>{{ art.word_count }} words</span>{% endif %}
+      {% if art.staleness_status == 'stale' %}<span class="meta-sep">·</span><span title="Possibly outdated — {{ art.days_old }} days old" style="color:#ef4444;">🔴 Stale</span>
+      {% elif art.staleness_status == 'aging' %}<span class="meta-sep">·</span><span title="{{ art.days_old }} days old" style="color:#f59e0b;">🟡 Aging</span>
+      {% else %}<span class="meta-sep">·</span><span title="{{ art.days_old }} days old" style="color:#22c55e;">🟢</span>{% endif %}
     </div>
     <a href="{{ url_for('article', slug=art.slug) }}" class="btn btn-primary btn-read">Read Article</a>
   </div>

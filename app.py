@@ -292,6 +292,22 @@ def dashboard():
     documents = models.get_documents_for_user(user_id)
     workspace = models.get_workspace_for_user(user_id)
     team_articles = models.get_workspace_articles(workspace["id"]) if workspace else []
+    # Annotate each article with staleness_status
+    today = datetime.now(timezone.utc).date()
+    for art in articles:
+        try:
+            created = datetime.fromisoformat(art["created_at"].replace("Z", "+00:00")).date()
+        except Exception:
+            created = today
+        days_old = (today - created).days
+        threshold = art.get("staleness_days") or 30
+        if days_old > threshold:
+            art["staleness_status"] = "stale"
+        elif days_old > threshold // 2:
+            art["staleness_status"] = "aging"
+        else:
+            art["staleness_status"] = "fresh"
+        art["days_old"] = days_old
     return render_template(
         "dashboard.html",
         articles=articles, jobs=jobs, documents=documents,
@@ -320,7 +336,20 @@ def article(slug):
         r'<a href="\2" target="_blank" rel="noopener noreferrer">\2</a>',
         html_content
     )
-    return render_template("article.html", article=art, content=html_content)
+    versions = models.get_article_versions(art.get("topic") or art["title"], session["user_id"])
+    today = datetime.now(timezone.utc).date()
+    try:
+        created = datetime.fromisoformat(art["created_at"].replace("Z", "+00:00")).date()
+    except Exception:
+        created = today
+    days_old = (today - created).days
+    threshold = art.get("staleness_days") or 30
+    is_stale = days_old > threshold
+    is_aging = (not is_stale) and days_old > threshold // 2
+    return render_template(
+        "article.html", article=art, content=html_content,
+        versions=versions, is_stale=is_stale, is_aging=is_aging, days_old=days_old
+    )
 
 
 @app.route("/article/<slug>/download.md")
@@ -615,6 +644,70 @@ def compare():
 
 
 # ── Public sharing ────────────────────────────────────────────────────────────
+
+@app.route("/article/<slug>/reresearch", methods=["POST"])
+@login_required
+def article_reresearch(slug):
+    if not validate_csrf():
+        flash("Invalid request.", "error")
+        return redirect(url_for("article", slug=slug))
+    art = models.get_article(slug, session["user_id"])
+    if not art:
+        abort(404)
+    topic = art.get("topic") or art.get("title") or slug
+    background.enqueue("research", {"topic": topic}, session["user_id"])
+    flash(f'Re-research started for "{topic}". You\'ll be notified when it\'s ready.', "success")
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/article/<slug>/refresh", methods=["POST"])
+@login_required
+def article_refresh(slug):
+    if not validate_csrf():
+        flash("Invalid request.", "error")
+        return redirect(url_for("article", slug=slug))
+    art = models.get_article(slug, session["user_id"])
+    if not art:
+        abort(404)
+    topic = art.get("topic") or art.get("title") or slug
+    background.enqueue("research", {"topic": topic, "parent_article_id": art["id"]}, session["user_id"])
+    flash(f'Refreshing "{topic}" — new version will appear in your library.', "success")
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/api/related/<slug>")
+@login_required
+def api_related(slug):
+    art = models.get_article(slug, session["user_id"])
+    if not art:
+        return jsonify([])
+    try:
+        import embeddings as _emb
+        related_rows = _emb.find_related(session["user_id"], art["id"], limit=5)
+        return jsonify([
+            {"title": r["title"], "slug": r["slug"], "topic": r["topic"], "created_at": r["created_at"]}
+            for r in related_rows
+        ])
+    except Exception:
+        return jsonify([])
+
+
+@app.route("/api/search/semantic")
+@login_required
+def api_search_semantic():
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify([])
+    try:
+        import embeddings as _emb
+        rows = _emb.semantic_search(session["user_id"], q, limit=10)
+        return jsonify([
+            {"title": r["title"], "slug": r["slug"], "topic": r["topic"], "created_at": r["created_at"]}
+            for r in rows
+        ])
+    except Exception:
+        return jsonify([])
+
 
 @app.route("/article/<slug>/share", methods=["POST"])
 @login_required

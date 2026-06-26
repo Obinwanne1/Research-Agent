@@ -13,6 +13,17 @@
   <div class="article-header-meta">
     <span class="article-meta-pill">📅 {{ article.created_at[:10] }}</span>
     {% if article.word_count %}<span class="article-meta-pill">📝 {{ article.word_count }} words</span>{% endif %}
+    {% if article.confidence_score %}
+      {% if article.confidence_score >= 8 %}
+        <span class="article-meta-pill confidence-high" title="Confidence score: {{ article.confidence_score }}/10">🟢 High confidence</span>
+      {% elif article.confidence_score >= 6 %}
+        <span class="article-meta-pill confidence-med" title="Confidence score: {{ article.confidence_score }}/10">🟡 Medium confidence</span>
+      {% else %}
+        <span class="article-meta-pill confidence-low" title="Confidence score: {{ article.confidence_score }}/10">🔴 Low confidence</span>
+      {% endif %}
+    {% endif %}
+    {% if article.source_count %}<span class="article-meta-pill" title="Web sources fetched">🔗 {{ article.source_count }} source{{ 's' if article.source_count != 1 }}</span>{% endif %}
+    {% if article.iteration_count and article.iteration_count > 1 %}<span class="article-meta-pill" title="Self-correcting research ran a second pass">🔄 2-pass</span>{% endif %}
     <button class="article-meta-pill article-copy-btn" id="copy-article-btn" title="Copy article text">Copy Article</button>
     <div class="export-dropdown">
       <button class="article-meta-pill export-toggle">Export ▾</button>
@@ -34,14 +45,67 @@
       Copy Link
     </button>
     {% endif %}
+    {% if not article.confidence_score or article.confidence_score < 8 %}
+    <form method="POST" action="{{ url_for('article_reresearch', slug=article.slug) }}" style="margin:0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="article-meta-pill reresearch-btn">🔄 Re-research</button>
+    </form>
+    {% endif %}
   </div>
 </div>
+
+<!-- Staleness banner -->
+{% if is_stale %}
+<div class="staleness-banner staleness-stale">
+  🔴 This article is <strong>{{ days_old }} days old</strong> — content may be outdated for this topic.
+  <form method="POST" action="{{ url_for('article_refresh', slug=article.slug) }}" style="display:inline;margin-left:12px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="staleness-refresh-btn">↻ Refresh now</button>
+  </form>
+</div>
+{% elif is_aging %}
+<div class="staleness-banner staleness-aging">
+  🟡 This article is <strong>{{ days_old }} days old</strong> — consider refreshing soon.
+  <form method="POST" action="{{ url_for('article_refresh', slug=article.slug) }}" style="display:inline;margin-left:12px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="staleness-refresh-btn">↻ Refresh</button>
+  </form>
+</div>
+{% endif %}
 
 <!-- Content -->
 <div class="card article-card-page">
   <div class="article-content" id="article-body">
     {{ content | safe }}
   </div>
+</div>
+
+<!-- Version history -->
+{% if versions and versions|length > 1 %}
+<div class="card" style="margin-top:16px;padding:16px 20px;">
+  <h3 style="font-size:0.875rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">🕐 Version History ({{ versions|length }})</h3>
+  <div style="display:flex;flex-direction:column;gap:6px;">
+    {% for v in versions %}
+    <div style="display:flex;align-items:center;gap:10px;font-size:0.82rem;{% if v.slug == article.slug %}font-weight:700;color:var(--accent);{% else %}color:var(--text-muted);{% endif %}">
+      <span style="flex-shrink:0;">{{ v.created_at[:10] }}</span>
+      {% if v.slug == article.slug %}
+        <span style="flex:1;">← current</span>
+      {% else %}
+        <a href="{{ url_for('article', slug=v.slug) }}" style="flex:1;color:inherit;text-decoration:underline;">View this version</a>
+      {% endif %}
+      {% if v.confidence_score %}
+        <span>{% if v.confidence_score >= 8 %}🟢{% elif v.confidence_score >= 6 %}🟡{% else %}🔴{% endif %} {{ v.confidence_score }}/10</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Related articles (populated via JS) -->
+<div id="related-panel" class="card" style="margin-top:16px;padding:16px 20px;display:none;">
+  <h3 style="font-size:0.875rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">🔗 Related Articles</h3>
+  <div id="related-list" style="display:flex;flex-direction:column;gap:6px;"></div>
 </div>
 
 <style>
@@ -184,6 +248,32 @@
 .share-btn:hover { background: var(--border); }
 .share-btn-on { background: #d1fae5; color: #065f46; }
 body.dark .share-btn-on { background: #064e3b; color: #6ee7b7; }
+
+/* ── Staleness banners ── */
+.staleness-banner {
+  padding: 10px 16px; border-radius: 8px; margin-bottom: 16px;
+  font-size: 0.875rem; display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+}
+.staleness-stale { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.staleness-aging { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+body.dark .staleness-stale { background: #450a0a; color: #fca5a5; border-color: #7f1d1d; }
+body.dark .staleness-aging { background: #451a03; color: #fcd34d; border-color: #78350f; }
+.staleness-refresh-btn {
+  background: none; border: 1px solid currentColor; border-radius: 6px;
+  padding: 3px 10px; font-size: 0.78rem; font-weight: 600; cursor: pointer;
+  color: inherit; transition: opacity 0.15s;
+}
+.staleness-refresh-btn:hover { opacity: 0.75; }
+
+/* ── Confidence badges ── */
+.confidence-high { background: #d1fae5; color: #065f46; }
+.confidence-med  { background: #fef3c7; color: #92400e; }
+.confidence-low  { background: #fee2e2; color: #991b1b; }
+body.dark .confidence-high { background: #064e3b; color: #6ee7b7; }
+body.dark .confidence-med  { background: #451a03; color: #fcd34d; }
+body.dark .confidence-low  { background: #450a0a; color: #fca5a5; }
+.reresearch-btn { cursor: pointer; color: var(--accent); font-weight: 600; transition: background 0.15s; }
+.reresearch-btn:hover { background: var(--border); }
 
 /* ── Export dropdown ── */
 .export-dropdown { position: relative; display: inline-flex; }
@@ -341,6 +431,25 @@ body.dark .share-btn-on { background: #064e3b; color: #6ee7b7; }
       if (s.parentNode) s.parentNode.removeChild(s);
     });
   });
+})();
+
+// ── Related articles ─────────────────────────────────────────────────────────
+(function () {
+  const panel = document.getElementById('related-panel');
+  const list = document.getElementById('related-list');
+  if (!panel || !list) return;
+  fetch('/api/related/{{ article.slug }}')
+    .then(r => r.json())
+    .then(function (items) {
+      if (!items || items.length === 0) return;
+      panel.style.display = '';
+      list.innerHTML = items.map(function (a) {
+        return '<a href="/article/' + a.slug + '" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);text-decoration:none;color:var(--text);font-size:0.85rem;gap:12px;">'
+          + '<span style="flex:1;font-weight:500;">' + a.title + '</span>'
+          + '<span style="font-size:0.72rem;color:var(--text-muted);white-space:nowrap;">' + a.created_at.slice(0, 10) + '</span>'
+          + '</a>';
+      }).join('');
+    }).catch(function () {});
 })();
 </script>
 {% endblock %}

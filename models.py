@@ -224,6 +224,41 @@ def init_db():
         except Exception:
             pass
 
+        # Migrate: agentic research loop metadata
+        for col_sql in [
+            "ALTER TABLE articles ADD COLUMN confidence_score INTEGER",
+            "ALTER TABLE articles ADD COLUMN source_count INTEGER",
+            "ALTER TABLE articles ADD COLUMN iteration_count INTEGER NOT NULL DEFAULT 1",
+        ]:
+            try:
+                c.execute(col_sql)
+                conn.commit()
+            except Exception:
+                pass
+
+        # Migrate: staleness + version history (Feature 5)
+        for col_sql in [
+            "ALTER TABLE articles ADD COLUMN topic_category TEXT",
+            "ALTER TABLE articles ADD COLUMN staleness_days INTEGER NOT NULL DEFAULT 30",
+            "ALTER TABLE articles ADD COLUMN parent_article_id INTEGER REFERENCES articles(id)",
+        ]:
+            try:
+                c.execute(col_sql)
+                conn.commit()
+            except Exception:
+                pass
+
+        # Semantic embeddings table (Feature 6)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS article_embeddings (
+                article_id    INTEGER PRIMARY KEY,
+                embedding_json TEXT NOT NULL,
+                created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+                FOREIGN KEY (article_id) REFERENCES articles(id)
+            )
+        """)
+        conn.commit()
+
         # User documents table (internal knowledge for research synthesis)
         c.execute("""
             CREATE TABLE IF NOT EXISTS user_documents (
@@ -523,13 +558,19 @@ def get_jobs_for_user(user_id, limit=50):
 
 # ── Article helpers ───────────────────────────────────────────────────────────
 
-def create_article(user_id, job_id, title, slug, file_path, topic, word_count, workspace_id=None):
+def create_article(user_id, job_id, title, slug, file_path, topic, word_count, workspace_id=None,
+                   confidence_score=None, source_count=None, iteration_count=1,
+                   topic_category=None, staleness_days=30, parent_article_id=None):
     with _db_lock:
         conn = get_conn()
         try:
             conn.execute(
-                "INSERT INTO articles (user_id, job_id, title, slug, file_path, topic, word_count, workspace_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (user_id, job_id, title, slug, file_path, topic, word_count, workspace_id)
+                "INSERT INTO articles (user_id, job_id, title, slug, file_path, topic, word_count, workspace_id, "
+                "confidence_score, source_count, iteration_count, topic_category, staleness_days, parent_article_id) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (user_id, job_id, title, slug, file_path, topic, word_count, workspace_id,
+                 confidence_score, source_count, iteration_count,
+                 topic_category, staleness_days, parent_article_id)
             )
             conn.commit()
             article_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -1059,6 +1100,68 @@ def delete_document(doc_id, user_id):
         )
         conn.commit()
         conn.close()
+
+
+# ── Version history helpers (Feature 5) ──────────────────────────────────────
+
+def get_article_versions(topic, user_id):
+    """All articles for same topic, newest first."""
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT id, title, slug, created_at, confidence_score FROM articles "
+        "WHERE user_id = ? AND topic = ? ORDER BY created_at DESC",
+        (user_id, topic)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ── Embedding helpers (Feature 6) ─────────────────────────────────────────────
+
+def save_embedding(article_id, embedding_json):
+    with _db_lock:
+        conn = get_conn()
+        conn.execute(
+            "INSERT INTO article_embeddings (article_id, embedding_json) VALUES (?, ?) "
+            "ON CONFLICT(article_id) DO UPDATE SET embedding_json=excluded.embedding_json, created_at=datetime('now')",
+            (article_id, embedding_json)
+        )
+        conn.commit()
+        conn.close()
+
+
+def get_embedding(article_id):
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT embedding_json FROM article_embeddings WHERE article_id = ?", (article_id,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return None
+    try:
+        import json as _json
+        return _json.loads(row["embedding_json"])
+    except Exception:
+        return None
+
+
+def get_all_embeddings_for_user(user_id):
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT ae.article_id, ae.embedding_json, a.title, a.slug, a.topic, a.created_at
+        FROM article_embeddings ae
+        JOIN articles a ON a.id = ae.article_id
+        WHERE a.user_id = ?
+    """, (user_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_article_by_id(article_id):
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM articles WHERE id = ?", (article_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
 
 
 # ── Admin stats ───────────────────────────────────────────────────────────────
